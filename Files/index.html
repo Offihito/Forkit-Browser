@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forkit Browser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+ <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="tabs-bar" id="tabs-bar"></div>
+
+  <div class="toolbar">
+    <button id="back"><i class="fas fa-chevron-left"></i></button>
+    <button id="forward"><i class="fas fa-chevron-right"></i></button>
+    <button id="refresh"><i class="fas fa-sync-alt"></i></button>
+    <button id="home"><i class="fas fa-home"></i></button>
+    
+    <div id="address-wrapper">
+      <input type="text" id="address" placeholder="Arama yapın veya URL girin">
+      <div id="history-dropdown"></div>
+    </div>
+
+    <button id="go"><i class="fas fa-arrow-right"></i></button>
+    <button id="dpi-indicator" title="DPI Bypass Aktif 🛡️"><i class="fas fa-shield-alt"></i></button>
+    <button id="history-btn" title="Geçmiş"><i class="fas fa-history"></i></button>
+    <button id="new-tab">+</button>
+  </div>
+
+  <div id="history-page">
+    <div id="history-header">
+      <h2>Geçmiş</h2>
+      <input type="text" id="history-search" placeholder="Geçmişte ara...">
+      <button id="clear-history-btn"><i class="fas fa-trash"></i> Geçmişi Temizle</button>
+      <button id="history-close">×</button>
+    </div>
+    <div id="history-content"></div>
+  </div>
+
+  <div id="confirm-dialog">
+    <div id="confirm-box">
+      <h3>Geçmişi Temizle?</h3>
+      <p>Tüm tarama geçmişiniz kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+      <div id="confirm-buttons">
+        <button id="confirm-cancel">İptal</button>
+        <button id="confirm-ok">Temizle</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="webview-container"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

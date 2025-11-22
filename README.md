@@ -1,0 +1,1 @@
+Forkit Browser is a browser based on chromium technology

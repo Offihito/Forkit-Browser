@@ -50,6 +50,63 @@
     </div>
   </div>
 
+  <div id="dpi-modal">
+    <div id="dpi-modal-box">
+      <div id="dpi-modal-header">
+        <h3>🛡️ DPI Bypass Aktif</h3>
+        <button id="dpi-modal-close">×</button>
+      </div>
+      <div id="dpi-modal-content">
+        <p class="dpi-intro">Tarayıcınız aşağıdaki teknolojilerle korunuyor:</p>
+        
+        <div class="dpi-features">
+          <div class="dpi-feature">
+            <i class="fas fa-shield-alt"></i>
+            <div>
+              <strong>DNS-over-HTTPS (DoH)</strong>
+              <span>Şifreli DNS sorguları</span>
+            </div>
+          </div>
+          
+          <div class="dpi-feature">
+            <i class="fas fa-lock"></i>
+            <div>
+              <strong>TLS Fragmentasyonu</strong>
+              <span>Paket parçalama koruması</span>
+            </div>
+          </div>
+          
+          <div class="dpi-feature">
+            <i class="fas fa-user-secret"></i>
+            <div>
+              <strong>SNI Maskeleme</strong>
+              <span>Alan adı gizleme</span>
+            </div>
+          </div>
+          
+          <div class="dpi-feature">
+            <i class="fas fa-network-wired"></i>
+            <div>
+              <strong>Paket Manipülasyonu</strong>
+              <span>Derin paket inceleme engelleme</span>
+            </div>
+          </div>
+        </div>
+
+        
+
+        <div class="dpi-providers">
+          <h4>Desteklenen DNS sağlayıcıları:</h4>
+          <ul>
+            <li><i class="fas fa-check-circle"></i> Google DNS (8.8.8.8)</li>
+            <li><i class="fas fa-check-circle"></i> Cloudflare DNS (1.1.1.1)</li>
+            <li><i class="fas fa-check-circle"></i> Quad9 DNS (9.9.9.9)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="webview-container"></div>
 
   <script src="renderer.js"></script>

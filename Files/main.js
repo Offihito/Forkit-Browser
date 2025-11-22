@@ -86,7 +86,7 @@ function createWindow() {
     callback({ requestHeaders: headers });
   });
 
-  win.loadFile('index.html');
+  win.loadFile('Files/index.html');
 }
 
 app.whenReady().then(() => {

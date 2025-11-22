@@ -24,6 +24,9 @@ const confirmDialog = document.getElementById('confirm-dialog');
 const confirmCancel = document.getElementById('confirm-cancel');
 const confirmOk = document.getElementById('confirm-ok');
 
+const dpiModal = document.getElementById('dpi-modal');
+const dpiModalClose = document.getElementById('dpi-modal-close');
+
 let tabs = [];
 let activeTab = null;
 let tabIdCounter = 0;
@@ -440,26 +443,21 @@ historyClose.onclick = () => {
 
 historySearch.addEventListener('input', (e) => renderHistoryPage(e.target.value));
 
-// DPI Bypass bilgilendirme
+// DPI Bypass modal
 dpiIndicator.onclick = () => {
-  const message = `🛡️ DPI Bypass Aktif
-
-Tarayıcınız aşağıdaki teknolojilerle korunuyor:
-
-✅ DNS-over-HTTPS (DoH)
-✅ TLS Fragmentasyonu
-✅ SNI Maskeleme
-✅ Paket Manipülasyonu
-
-Discord, Roblox ve diğer yasaklı sitelere güvenle erişebilirsiniz.
-
-Desteklenen DNS sağlayıcıları:
-• Google DNS
-• Cloudflare DNS
-• Quad9 DNS`;
-
-  alert(message);
+  dpiModal.style.display = 'flex';
 };
+
+dpiModalClose.onclick = () => {
+  dpiModal.style.display = 'none';
+};
+
+// Modal dışına tıklayınca kapat
+dpiModal.addEventListener('click', (e) => {
+  if (e.target === dpiModal) {
+    dpiModal.style.display = 'none';
+  }
+});
 
 // Geçmiş temizleme butonları
 clearHistoryBtn.onclick = () => {

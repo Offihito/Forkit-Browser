@@ -1,17 +1,67 @@
 {
-  "name": "forkit",
+  "name": "forkit browser",
   "version": "1.0.0",
-  "description": "Electron.js ile yapılmış basit tarayıcı",
-  "main": "Files/main.js",
-  "scripts": {
-    "start": "electron . --no-sandbox"
+  "description": "Open Source Browser Based on Chromium",
+  "main": "main.js",
+  "homepage": "./",                      
+ "scripts": {
+    "start": "electron main.js --no-sandbox",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",        
+    "build:linux": "electron-builder --linux"         
   },
   "keywords": [],
-  "author": "",
+  "author": "Offihito",
   "license": "ISC",
   "type": "commonjs",
+  "build": {
+    "appId": "com.example.forkit",
+    "productName": "Forkit",
+    "copyright": "Copyright © 2025 Offihito",
+    "directories": {
+      "output": "dist"                    
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "**/*",
+      "!dist/**",
+      "!node_modules/**",
+      "!.git/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",               
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable"             
+        }
+      ],
+      "icon": "build/icon.ico"           
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns"         
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "rpm"],
+      "icon": "build/icon.png"           
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "devDependencies": {
-    "electron": "^39.2.2"
+    "electron": "^39.2.2",
+    "electron-builder": "^25.1.0"
   },
   "dependencies": {
     "@electron/remote": "^2.1.3"

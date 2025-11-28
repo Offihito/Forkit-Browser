@@ -1,45 +1,61 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Forkit Browser</title>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
- <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
 
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Ana stil dosyası -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Electron CSP uyarısını azaltmak için hafif bir CSP (isteğe bağlı ama önerilir) -->
+  <!-- Removed 'unsafe-eval' - test if it works without -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https: data: blob: 'unsafe-inline'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:;">
+</head>
+
+<body>
+  <!-- Sekme Çubuğu -->
   <div class="tabs-bar" id="tabs-bar"></div>
 
+  <!-- Üst Araç Çubuğu -->
   <div class="toolbar">
-    <button id="back"><i class="fas fa-chevron-left"></i></button>
-    <button id="forward"><i class="fas fa-chevron-right"></i></button>
-    <button id="refresh"><i class="fas fa-sync-alt"></i></button>
-    <button id="home"><i class="fas fa-home"></i></button>
-    
+    <button id="back" title="Geri"><i class="fas fa-chevron-left"></i></button>
+    <button id="forward" title="İleri"><i class="fas fa-chevron-right"></i></button>
+    <button id="refresh" title="Yenile"><i class="fas fa-sync-alt"></i></button>
+    <button id="home" title="Ana Sayfa"><i class="fas fa-home"></i></button>
+
     <div id="address-wrapper">
-      <input type="text" id="address" placeholder="Arama yapın veya URL girin">
+      <input type="text" id="address" placeholder="Arama yapın veya URL girin" autocomplete="off" />
       <div id="history-dropdown"></div>
     </div>
 
-    <button id="go"><i class="fas fa-arrow-right"></i></button>
-    <button id="dpi-indicator" title="DPI Bypass Aktif 🛡️"><i class="fas fa-shield-alt"></i></button>
+    <button id="go" title="Git"><i class="fas fa-arrow-right"></i></button>
+    <button id="dpi-indicator" title="DPI Bypass Aktif"><i class="fas fa-shield-alt"></i></button>
     <button id="history-btn" title="Geçmiş"><i class="fas fa-history"></i></button>
-    <button id="new-tab">+</button>
+    <button id="new-tab" title="Yeni Sekme">+</button>
   </div>
 
-  <div id="history-page">
+  <!-- Geçmiş Sayfası -->
+  <div id="history-page" class="modal-page">
     <div id="history-header">
       <h2>Geçmiş</h2>
-      <input type="text" id="history-search" placeholder="Geçmişte ara...">
+      <input type="text" id="history-search" placeholder="Geçmişte ara..." />
       <button id="clear-history-btn"><i class="fas fa-trash"></i> Geçmişi Temizle</button>
       <button id="history-close">×</button>
     </div>
     <div id="history-content"></div>
   </div>
 
-  <div id="confirm-dialog">
+  <!-- Geçmiş Temizleme Onay Diyaloğu -->
+  <div id="confirm-dialog" class="modal">
     <div id="confirm-box">
       <h3>Geçmişi Temizle?</h3>
       <p>Tüm tarama geçmişiniz kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
@@ -50,15 +66,16 @@
     </div>
   </div>
 
-  <div id="dpi-modal">
+  <!-- DPI Bypass Bilgi Modal -->
+  <div id="dpi-modal" class="modal">
     <div id="dpi-modal-box">
       <div id="dpi-modal-header">
-        <h3>🛡️ DPI Bypass Aktif</h3>
+        <h3>DPI Bypass Aktif</h3>
         <button id="dpi-modal-close">×</button>
       </div>
       <div id="dpi-modal-content">
         <p class="dpi-intro">Tarayıcınız aşağıdaki teknolojilerle korunuyor:</p>
-        
+
         <div class="dpi-features">
           <div class="dpi-feature">
             <i class="fas fa-shield-alt"></i>
@@ -67,7 +84,6 @@
               <span>Şifreli DNS sorguları</span>
             </div>
           </div>
-          
           <div class="dpi-feature">
             <i class="fas fa-lock"></i>
             <div>
@@ -75,7 +91,6 @@
               <span>Paket parçalama koruması</span>
             </div>
           </div>
-          
           <div class="dpi-feature">
             <i class="fas fa-user-secret"></i>
             <div>
@@ -83,7 +98,6 @@
               <span>Alan adı gizleme</span>
             </div>
           </div>
-          
           <div class="dpi-feature">
             <i class="fas fa-network-wired"></i>
             <div>
@@ -92,8 +106,6 @@
             </div>
           </div>
         </div>
-
-        
 
         <div class="dpi-providers">
           <h4>Desteklenen DNS sağlayıcıları:</h4>
@@ -107,8 +119,10 @@
     </div>
   </div>
 
+  <!-- Webview Konteyneri -->
   <div id="webview-container"></div>
 
+  <!-- Renderer Script -->
   <script src="renderer.js"></script>
 </body>
 </html>

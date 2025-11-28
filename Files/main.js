@@ -1,3 +1,4 @@
+// main.js (debug removed, Cloudflare bypass preserved)
 const { app, BrowserWindow, Menu, ipcMain, session, clipboard, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -11,6 +12,10 @@ try {
   console.warn('@electron/remote yüklü değil');
 }
 
+// Set consistent User-Agent globally
+const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+app.userAgentFallback = userAgent;
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -19,7 +24,7 @@ function createWindow() {
       nodeIntegration: true,  
       contextIsolation: false, 
       webviewTag: true,
-      webSecurity: false,
+      webSecurity: true,
       allowRunningInsecureContent: true,
       enableRemoteModule: true
     }
@@ -41,18 +46,18 @@ function createWindow() {
   });
 
   // User-Agent değiştir
-  ses.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  ses.setUserAgent(userAgent);
 
-  // WebRequest interceptor - Host header manipülasyonu
+  // Add modern security headers
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
     
-    // Host header'ı küçük harfe çevir (bazı DPI sistemlerini atlatır)
-    if (headers['Host']) {
-      headers['Host'] = headers['Host'].toLowerCase();
-    }
+    // Set consistent sec-ch-ua headers
+    headers['sec-ch-ua'] = '"Not)A;Brand";v="99", "Chromium";v="142", "Google Chrome";v="142"';
+    headers['sec-ch-ua-mobile'] = '?0';
+    headers['sec-ch-ua-platform'] = '"Windows"';
     
-    // Referrer ekle
+    // Referrer ekle - but only if not set, and make it realistic
     if (!headers['Referer'] && !headers['referer']) {
       headers['Referer'] = 'https://www.google.com/';
     }
@@ -69,15 +74,16 @@ function createWindow() {
     console.log('Webview proxy ayarları yapıldı');
   });
 
-  webviewSession.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  webviewSession.setUserAgent(userAgent);
 
   // Webview için de header manipülasyonu
   webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
     
-    if (headers['Host']) {
-      headers['Host'] = headers['Host'].toLowerCase();
-    }
+    // Set consistent sec-ch-ua
+    headers['sec-ch-ua'] = '"Not)A;Brand";v="99", "Chromium";v="142", "Google Chrome";v="142"';
+    headers['sec-ch-ua-mobile'] = '?0';
+    headers['sec-ch-ua-platform'] = '"Windows"';
     
     if (!headers['Referer'] && !headers['referer']) {
       headers['Referer'] = 'https://www.google.com/';

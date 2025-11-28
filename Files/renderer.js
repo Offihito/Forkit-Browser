@@ -1,5 +1,4 @@
-// renderer.js – Forkit Browser (DPI Bypass + Context Menu)
-
+// renderer.js (debug removed)
 const tabsBar = document.getElementById('tabs-bar');
 const webviewContainer = document.getElementById('webview-container');
 const addressInput = document.getElementById('address');
@@ -34,7 +33,77 @@ let tabIdCounter = 0;
 // Tüm sekmelerin birleşik geçmişi
 let globalHistory = [];
 
-// Yeni sekme oluştur
+// ==================== KALICI DEPOLAMA FONKSİYONLARI ====================
+
+// Geçmişi yükle
+function loadGlobalHistory() {
+  try {
+    const saved = localStorage.getItem('forkit_global_history');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Tarihleri Date objesine dönüştür
+      globalHistory = parsed.map(entry => ({
+        ...entry,
+        time: new Date(entry.time)
+      }));
+      console.log('Geçmiş yüklendi:', globalHistory.length, 'kayıt');
+    }
+  } catch (error) {
+    console.error('Geçmiş yükleme hatası:', error);
+    globalHistory = [];
+  }
+}
+
+// Geçmişi kaydet
+function saveGlobalHistory() {
+  try {
+    localStorage.setItem('forkit_global_history', JSON.stringify(globalHistory));
+    console.log('Geçmiş kaydedildi:', globalHistory.length, 'kayıt');
+  } catch (error) {
+    console.error('Geçmiş kaydetme hatası:', error);
+  }
+}
+
+// Sekme geçmişini kaydet
+function saveTabHistory(tab) {
+  try {
+    const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
+    localStorage.setItem(tabHistoryKey, JSON.stringify({
+      history: tab.history,
+      historyIndex: tab.historyIndex,
+      url: tab.url
+    }));
+  } catch (error) {
+    console.error('Sekme geçmişi kaydetme hatası:', error);
+  }
+}
+
+// Sekme geçmişini yükle
+function loadTabHistory(tab) {
+  try {
+    const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
+    const saved = localStorage.getItem(tabHistoryKey);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Tarihleri Date objesine dönüştür
+      tab.history = parsed.history.map(entry => ({
+        ...entry,
+        time: new Date(entry.time)
+      }));
+      tab.historyIndex = parsed.historyIndex;
+      return true;
+    }
+  } catch (error) {
+    console.error('Sekme geçmişi yükleme hatası:', error);
+  }
+  return false;
+}
+
+// Uygulama başlarken geçmişi yükle
+loadGlobalHistory();
+
+// ==================== YENİ SEKME OLUŞTUR ====================
+
 function createTab(url = 'https://www.google.com') {
   const webview = document.createElement('webview');
   webview.src = url;
@@ -78,6 +147,7 @@ function createTab(url = 'https://www.google.com') {
     if (tab.history[tab.historyIndex]) {
       tab.history[tab.historyIndex].favicon = img.src;
     }
+    saveTabHistory(tab);
   };
 
   webview.addEventListener('did-start-loading', () => {
@@ -89,7 +159,6 @@ function createTab(url = 'https://www.google.com') {
     tab.isLoading = false;
     const currentUrl = webview.getURL();
     
-    // Başlık güncellemesini bekle
     setTimeout(() => {
       const title = webview.getTitle() || 'Adsız Sayfa';
       
@@ -118,6 +187,7 @@ function createTab(url = 'https://www.google.com') {
               time: new Date(),
               tabId
             });
+            saveGlobalHistory();
           }
         } else {
           lastEntry.title = title;
@@ -138,6 +208,7 @@ function createTab(url = 'https://www.google.com') {
       }
       updateTabTitle(tab, title);
       updateFavicon();
+      saveTabHistory(tab);
     }, 100);
   });
 
@@ -153,6 +224,7 @@ function createTab(url = 'https://www.google.com') {
     updateTabTitle(tab, title);
     if (tab.history[tab.historyIndex]) {
       tab.history[tab.historyIndex].title = title;
+      saveTabHistory(tab);
     }
   });
 
@@ -162,7 +234,6 @@ function createTab(url = 'https://www.google.com') {
     }
   });
 
-  // Context menu (sağ tık menüsü)
   webview.addEventListener('context-menu', (e) => {
     e.preventDefault();
     showContextMenu(e, tab);
@@ -210,6 +281,15 @@ function switchTab(tab) {
 
 function closeTab(tabToClose) {
   const index = tabs.indexOf(tabToClose);
+  
+  // Sekme geçmişini temizle
+  try {
+    const tabHistoryKey = `forkit_tab_history_${tabToClose.tabId}`;
+    localStorage.removeItem(tabHistoryKey);
+  } catch (error) {
+    console.error('Sekme geçmişi temizleme hatası:', error);
+  }
+  
   tabToClose.webview.remove();
   tabToClose.tabElement.remove();
   tabs.splice(index, 1);
@@ -240,6 +320,7 @@ function goBack() {
   activeTab.webview.loadURL(entry.url);
   addressInput.value = entry.url;
   updateNavigationButtons();
+  saveTabHistory(activeTab);
 }
 
 function goForward() {
@@ -251,6 +332,7 @@ function goForward() {
   activeTab.webview.loadURL(entry.url);
   addressInput.value = entry.url;
   updateNavigationButtons();
+  saveTabHistory(activeTab);
 }
 
 function reload() { 
@@ -274,13 +356,11 @@ function navigateTo(url) {
   
   if (!/^https?:\/\//i.test(url)) {
     if (url.includes('.') && !url.includes(' ')) {
-      // URL gibi görünüyor
       actualUrl = 'https://' + url;
       displayUrl = url;
     } else {
-      // Arama sorgusu
       actualUrl = 'https://www.google.com/search?q=' + encodeURIComponent(url);
-      displayUrl = url; // Sadece arama terimini göster
+      displayUrl = url;
     }
   }
   
@@ -391,14 +471,15 @@ function renderHistoryPage(filter = '') {
   }
 }
 
-// Geçmiş temizleme fonksiyonu
 function clearHistory() {
   globalHistory.length = 0;
+  saveGlobalHistory();
   
   tabs.forEach(tab => {
     const currentEntry = tab.history[tab.historyIndex];
     tab.history = [currentEntry];
     tab.historyIndex = 0;
+    saveTabHistory(tab);
   });
   
   renderHistoryPage();
@@ -443,7 +524,6 @@ historyClose.onclick = () => {
 
 historySearch.addEventListener('input', (e) => renderHistoryPage(e.target.value));
 
-// DPI Bypass modal
 dpiIndicator.onclick = () => {
   dpiModal.style.display = 'flex';
 };
@@ -452,14 +532,12 @@ dpiModalClose.onclick = () => {
   dpiModal.style.display = 'none';
 };
 
-// Modal dışına tıklayınca kapat
 dpiModal.addEventListener('click', (e) => {
   if (e.target === dpiModal) {
     dpiModal.style.display = 'none';
   }
 });
 
-// Geçmiş temizleme butonları
 clearHistoryBtn.onclick = () => {
   confirmDialog.style.display = 'flex';
 };
@@ -473,7 +551,6 @@ confirmOk.onclick = () => {
   confirmDialog.style.display = 'none';
 };
 
-// Dialog dışına tıklayınca kapat
 confirmDialog.addEventListener('click', (e) => {
   if (e.target === confirmDialog) {
     confirmDialog.style.display = 'none';
@@ -590,7 +667,6 @@ function updateActiveTabHighlight() {
 // ==================== CONTEXT MENU (SAĞ TIK MENÜSÜ) ====================
 const { ipcRenderer, clipboard, shell } = require('electron');
 
-// Remote modülünü kontrol et
 let Menu, MenuItem;
 try {
   const remote = require('@electron/remote');
@@ -601,7 +677,6 @@ try {
 }
 
 function showContextMenu(event, tab) {
-  // Eğer Menu yüklü değilse basit bir context menu göster
   if (!Menu || !MenuItem) {
     console.warn('Context menu desteklenmiyor');
     return;
@@ -610,7 +685,6 @@ function showContextMenu(event, tab) {
   const params = event.params;
   const menu = new Menu();
 
-  // Metin seçiliyse
   if (params.selectionText) {
     menu.append(new MenuItem({
       label: 'Kopyala',
@@ -631,7 +705,6 @@ function showContextMenu(event, tab) {
     menu.append(new MenuItem({ type: 'separator' }));
   }
 
-  // Link üzerinde
   if (params.linkURL) {
     menu.append(new MenuItem({
       label: 'Linki yeni sekmede aç',
@@ -650,7 +723,6 @@ function showContextMenu(event, tab) {
     menu.append(new MenuItem({ type: 'separator' }));
   }
 
-  // Resim üzerinde
   if (params.hasImageContents || params.srcURL) {
     const imageUrl = params.srcURL;
     
@@ -686,7 +758,6 @@ function showContextMenu(event, tab) {
     menu.append(new MenuItem({ type: 'separator' }));
   }
 
-  // Genel menü öğeleri
   if (params.isEditable) {
     menu.append(new MenuItem({
       label: 'Yapıştır',
@@ -737,7 +808,6 @@ function showContextMenu(event, tab) {
         const result = await ipcRenderer.invoke('save-page', url, title);
         
         if (result.success && result.filePath) {
-          // Sayfa içeriğini al ve kaydet
           tab.webview.executeJavaScript('document.documentElement.outerHTML')
             .then(html => {
               const fs = require('fs');

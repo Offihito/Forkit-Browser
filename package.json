@@ -37,8 +37,7 @@
         "nsis"                
       ],
       "icon": "build/icon.ico",
-      "artifactName": "Forkit-${version}-${target}.${ext}",
-      "publisherName": "Offihito"
+      "artifactName": "Forkit-${version}-${target}.${ext}"
     },
     "portable": {
       "artifactName": "Forkit-${version}-portable.exe"

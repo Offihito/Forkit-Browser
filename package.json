@@ -1,15 +1,16 @@
 {
-  "name": "forkit browser",
+  "name": "forkit",
   "version": "1.0.0",
 <<<<<<< HEAD
   "description": "Open Source Browser Based on Chromium",
   "main": "main.js",
-  "homepage": "./",                      
- "scripts": {
+  "homepage": "./",
+  "scripts": {
     "start": "electron main.js --no-sandbox",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
+<<<<<<< HEAD
     "dist:linux": "electron-builder --linux",        
     "build:linux": "electron-builder --linux"         
 =======
@@ -21,55 +22,62 @@
     "dist:linux": "electron-builder --linux",
     "dist:win": "electron-builder --win"
 >>>>>>> 7389afd (New Version)
+=======
+    "dist:linux": "electron-builder --linux"
+>>>>>>> 3baa2f315d05b168e8f8704441ed476b1e6c0810
   },
-  "keywords": [],
+  "keywords": ["browser", "electron", "chromium", "open-source"],
   "author": "Offihito",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "build": {
-    "appId": "com.example.forkit",
+    "appId": "com.offihito.forkit",
     "productName": "Forkit",
     "copyright": "Copyright © 2025 Offihito",
     "directories": {
-      "output": "dist"                    
+      "output": "dist"
     },
     "files": [
       "main.js",
       "preload.js",
-      "**/*",
+      "index.html",
+      "assets/**/*",
+      "build/**/*",
       "!dist/**",
-      "!node_modules/**",
       "!.git/**"
     ],
     "win": {
       "target": [
-        {
-          "target": "nsis",               
-          "arch": ["x64", "ia32"]
-        },
-        {
-          "target": "portable"             
-        }
+        "portable",          
+        "nsis"                
       ],
-      "icon": "build/icon.ico"           
+      "icon": "build/icon.ico",
+      "artifactName": "Forkit-${version}-${target}.${ext}",
+      "publisherName": "Offihito"
     },
-    "mac": {
-      "target": ["dmg", "zip"],
-      "icon": "build/icon.icns"         
-    },
-    "linux": {
-      "target": ["AppImage", "deb", "rpm"],
-      "icon": "build/icon.png"           
+    "portable": {
+      "artifactName": "Forkit-${version}-portable.exe"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "perMachine": false
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "rpm", "snap"],
+      "icon": "build/icon.png",
+      "category": "Network;WebBrowser"
     }
   },
   "devDependencies": {
+<<<<<<< HEAD
 <<<<<<< HEAD
     "electron": "^39.2.2",
     "electron-builder": "^25.1.0"
@@ -77,6 +85,10 @@
     "electron": "^39.2.3",
     "electron-builder": "^26.0.12"
 >>>>>>> 7389afd (New Version)
+=======
+    "electron": "^39.2.3",
+    "electron-builder": "^25.1.8"
+>>>>>>> 3baa2f315d05b168e8f8704441ed476b1e6c0810
   },
   "dependencies": {
     "@electron/remote": "^2.1.3",

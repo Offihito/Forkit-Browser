@@ -12,7 +12,10 @@
     "dist:linux": "electron-builder --linux"
   },
   "keywords": ["browser", "electron", "chromium", "open-source"],
-  "author": "Offihito",
+  "author": {
+    "name": "Offihito",
+    "email": "offihito@example.com"
+  },
   "license": "MIT",
   "type": "commonjs",
   "build": {
@@ -28,6 +31,7 @@
       "index.html",
       "assets/**/*",
       "build/**/*",
+      "Files/**/*",
       "!dist/**",
       "!.git/**"
     ],
@@ -57,12 +61,18 @@
     "linux": {
       "target": ["AppImage", "deb", "rpm", "snap"],
       "icon": "build/icon.png",
-      "category": "Network;WebBrowser"
+      "category": "Network;WebBrowser",
+      "executableName": "forkit",
+      "asarUnpack": ["Files/**/*"]
+    },
+    "extraResources": [],
+    "electronDownload": {
+      "mirror": "https://github.com/electron/electron/releases/download/"
     }
   },
   "devDependencies": {
     "electron": "^39.2.3",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^26.0.12"
   },
   "dependencies": {
     "@electron/remote": "^2.1.3"

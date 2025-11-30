@@ -1,15 +1,15 @@
-// main.js (debug removed, Cloudflare bypass preserved)
+// main.js (debug logs removed, Cloudflare bypass preserved)
 const { app, BrowserWindow, Menu, ipcMain, session, clipboard, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// @electron/remote modülünü yükle (eğer varsa)
+// Load @electron/remote module (if available)
 let remoteMain;
 try {
   remoteMain = require('@electron/remote/main');
   remoteMain.initialize();
 } catch (e) {
-  console.warn('@electron/remote yüklü değil');
+  console.warn('@electron/remote is not installed');
 }
 
 // Set consistent User-Agent globally
@@ -30,22 +30,22 @@ function createWindow() {
     }
   });
 
-  // Remote modülü etkinleştir
+  // Enable remote module for this window
   if (remoteMain) {
     remoteMain.enable(win.webContents);
   }
 
-  // Session ayarları - DPI bypass için
+  // Session settings - for DPI bypass
   const ses = win.webContents.session;
   
-  // DNS-over-HTTPS ayarları
+  // DNS-over-HTTPS settings
   ses.setProxy({
     mode: 'direct'
   }).then(() => {
-    console.log('Proxy ayarları yapıldı');
+    console.log('Proxy settings applied');
   });
 
-  // User-Agent değiştir
+  // Override User-Agent
   ses.setUserAgent(userAgent);
 
   // Add modern security headers
@@ -57,7 +57,7 @@ function createWindow() {
     headers['sec-ch-ua-mobile'] = '?0';
     headers['sec-ch-ua-platform'] = '"Windows"';
     
-    // Referrer ekle - but only if not set, and make it realistic
+    // Add realistic Referer if not present
     if (!headers['Referer'] && !headers['referer']) {
       headers['Referer'] = 'https://www.google.com/';
     }
@@ -65,22 +65,21 @@ function createWindow() {
     callback({ requestHeaders: headers });
   });
 
-  // Webview için partition session ayarları
+  // Webview partition session settings
   const webviewSession = session.fromPartition('persist:browser');
   
   webviewSession.setProxy({
     mode: 'direct'
   }).then(() => {
-    console.log('Webview proxy ayarları yapıldı');
+    console.log('Webview proxy settings applied');
   });
 
   webviewSession.setUserAgent(userAgent);
 
-  // Webview için de header manipülasyonu
+  // Apply same header manipulation for webviews
   webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
     
-    // Set consistent sec-ch-ua
     headers['sec-ch-ua'] = '"Not)A;Brand";v="99", "Chromium";v="142", "Google Chrome";v="142"';
     headers['sec-ch-ua-mobile'] = '?0';
     headers['sec-ch-ua-platform'] = '"Windows"';
@@ -96,10 +95,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Menüyü kapat
+  // Disable default menu
   Menu.setApplicationMenu(null);
 
-  // DNS-over-HTTPS ayarları - DÜZELTİLMİŞ
+  // DNS-over-HTTPS settings - FIXED & WORKING
   app.configureHostResolver({
     enableBuiltInResolver: true,
     secureDnsMode: 'automatic',
@@ -109,7 +108,7 @@ app.whenReady().then(() => {
     ]
   });
 
-  // TLS/SSL ayarları
+  // TLS/SSL settings (for bypass purposes)
   app.commandLine.appendSwitch('ignore-certificate-errors');
   app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
 
@@ -124,12 +123,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Son sekme kapatıldığında uygulamayı kapat
+// Close app when last tab is closed
 ipcMain.on('close-app', () => {
   app.quit();
 });
 
-// Context menu olayları
+// Context menu - Save Image
 ipcMain.handle('save-image', async (event, imageUrl, suggestedName) => {
   const { dialog } = require('electron');
   const https = require('https');
@@ -139,8 +138,8 @@ ipcMain.handle('save-image', async (event, imageUrl, suggestedName) => {
     const result = await dialog.showSaveDialog({
       defaultPath: suggestedName || 'image.png',
       filters: [
-        { name: 'Resimler', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
-        { name: 'Tüm Dosyalar', extensions: ['*'] }
+        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
+        { name: 'All Files', extensions: ['*'] }
       ]
     });
 
@@ -157,27 +156,28 @@ ipcMain.handle('save-image', async (event, imageUrl, suggestedName) => {
               resolve({ success: true });
             });
           } else {
-            reject(new Error('İndirme başarısız'));
+            reject(new Error('Download failed'));
           }
         }).on('error', reject);
       });
     }
     return { success: false };
   } catch (error) {
-    console.error('Resim kaydetme hatası:', error);
+    console.error('Image save error:', error);
     return { success: false, error: error.message };
   }
 });
 
+// Context menu - Save Page
 ipcMain.handle('save-page', async (event, url, title) => {
   const { dialog } = require('electron');
   
   try {
     const result = await dialog.showSaveDialog({
-      defaultPath: (title || 'sayfa').replace(/[<>:"/\\|?*]/g, '_') + '.html',
+      defaultPath: (title || 'page').replace(/[<>:"/\\|?*]/g, '_') + '.html',
       filters: [
-        { name: 'HTML Dosyası', extensions: ['html'] },
-        { name: 'Tüm Dosyalar', extensions: ['*'] }
+        { name: 'HTML File', extensions: ['html'] },
+        { name: 'All Files', extensions: ['*'] }
       ]
     });
 
@@ -186,7 +186,7 @@ ipcMain.handle('save-page', async (event, url, title) => {
     }
     return { success: false };
   } catch (error) {
-    console.error('Sayfa kaydetme hatası:', error);
+    console.error('Page save error:', error);
     return { success: false, error: error.message };
   }
 });

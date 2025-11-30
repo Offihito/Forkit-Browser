@@ -658,7 +658,7 @@ webview.active {
   50% { box-shadow: 0 0 0 8px rgba(102, 126, 234, 0); }
 }
 
-/* === GÜZEL VE TEMAYA UYUMLU SCROLLBAR === */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -686,7 +686,7 @@ webview.active {
   background: transparent;
 }
 
-/* Karanlık tema için */
+
 @media (prefers-color-scheme: dark) {
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
@@ -700,7 +700,7 @@ webview.active {
   }
 }
 
-/* Ekstra: Tabs bar ve history dropdown için özel ince scrollbar */
+
 .tabs-bar::-webkit-scrollbar,
 #history-dropdown::-webkit-scrollbar,
 #history-content::-webkit-scrollbar {

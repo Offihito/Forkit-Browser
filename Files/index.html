@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,103 +12,101 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
         integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <!-- Ana stil dosyası -->
+  <!-- CSS -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- Electron CSP uyarısını azaltmak için hafif bir CSP (isteğe bağlı ama önerilir) -->
-  <!-- Removed 'unsafe-eval' - test if it works without -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self' https: data: blob: 'unsafe-inline'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:;">
 </head>
 
 <body>
-  <!-- Sekme Çubuğu -->
+  <!-- Tabs Bar -->
   <div class="tabs-bar" id="tabs-bar"></div>
 
-  <!-- Üst Araç Çubuğu -->
+  <!-- Top Toolbar -->
   <div class="toolbar">
-    <button id="back" title="Geri"><i class="fas fa-chevron-left"></i></button>
-    <button id="forward" title="İleri"><i class="fas fa-chevron-right"></i></button>
-    <button id="refresh" title="Yenile"><i class="fas fa-sync-alt"></i></button>
-    <button id="home" title="Ana Sayfa"><i class="fas fa-home"></i></button>
+    <button id="back" title="Back"><i class="fas fa-chevron-left"></i></button>
+    <button id="forward" title="Forward"><i class="fas fa-chevron-right"></i></button>
+    <button id="refresh" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+    <button id="home" title="Homepage"><i class="fas fa-home"></i></button>
 
     <div id="address-wrapper">
-      <input type="text" id="address" placeholder="Arama yapın veya URL girin" autocomplete="off" />
+      <input type="text" id="address" placeholder="Search or enter URL" autocomplete="off" />
       <div id="history-dropdown"></div>
     </div>
 
-    <button id="go" title="Git"><i class="fas fa-arrow-right"></i></button>
-    <button id="dpi-indicator" title="DPI Bypass Aktif"><i class="fas fa-shield-alt"></i></button>
-    <button id="history-btn" title="Geçmiş"><i class="fas fa-history"></i></button>
-    <button id="new-tab" title="Yeni Sekme">+</button>
+    <button id="go" title="Go"><i class="fas fa-arrow-right"></i></button>
+    <button id="dpi-indicator" title="DPI Bypass Active"><i class="fas fa-shield-alt"></i></button>
+    <button id="history-btn" title="History"><i class="fas fa-history"></i></button>
+    <button id="new-tab" title="New Tab">+</button>
   </div>
 
-  <!-- Geçmiş Sayfası -->
+  <!-- History Page -->
   <div id="history-page" class="modal-page">
     <div id="history-header">
-      <h2>Geçmiş</h2>
-      <input type="text" id="history-search" placeholder="Geçmişte ara..." />
-      <button id="clear-history-btn"><i class="fas fa-trash"></i> Geçmişi Temizle</button>
+      <h2>History</h2>
+      <input type="text" id="history-search" placeholder="Search in history..." />
+      <button id="clear-history-btn"><i class="fas fa-trash"></i> Clear History</button>
       <button id="history-close">×</button>
     </div>
     <div id="history-content"></div>
   </div>
 
-  <!-- Geçmiş Temizleme Onay Diyaloğu -->
+  <!-- Clear History Confirmation Dialog -->
   <div id="confirm-dialog" class="modal">
     <div id="confirm-box">
-      <h3>Geçmişi Temizle?</h3>
-      <p>Tüm tarama geçmişiniz kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+      <h3>Clear History?</h3>
+      <p>Your entire browsing history will be permanently deleted. This action cannot be undone.</p>
       <div id="confirm-buttons">
-        <button id="confirm-cancel">İptal</button>
-        <button id="confirm-ok">Temizle</button>
+        <button id="confirm-cancel">Cancel</button>
+        <button id="confirm-ok">Clear</button>
       </div>
     </div>
   </div>
 
-  <!-- DPI Bypass Bilgi Modal -->
+  <!-- DPI Bypass Modal -->
   <div id="dpi-modal" class="modal">
     <div id="dpi-modal-box">
       <div id="dpi-modal-header">
-        <h3>DPI Bypass Aktif</h3>
+        <h3>DPI Bypass Active</h3>
         <button id="dpi-modal-close">×</button>
       </div>
       <div id="dpi-modal-content">
-        <p class="dpi-intro">Tarayıcınız aşağıdaki teknolojilerle korunuyor:</p>
+        <p class="dpi-intro">Your browser is protected with the following technologies:</p>
 
         <div class="dpi-features">
           <div class="dpi-feature">
             <i class="fas fa-shield-alt"></i>
             <div>
               <strong>DNS-over-HTTPS (DoH)</strong>
-              <span>Şifreli DNS sorguları</span>
+              <span>Encrypted DNS queries</span>
             </div>
           </div>
           <div class="dpi-feature">
             <i class="fas fa-lock"></i>
             <div>
-              <strong>TLS Fragmentasyonu</strong>
-              <span>Paket parçalama koruması</span>
+              <strong>TLS Fragmentation</strong>
+              <span>Packet fragmentation protection</span>
             </div>
           </div>
           <div class="dpi-feature">
             <i class="fas fa-user-secret"></i>
             <div>
-              <strong>SNI Maskeleme</strong>
-              <span>Alan adı gizleme</span>
+              <strong>SNI Masking</strong>
+              <span>Domain name hiding</span>
             </div>
           </div>
           <div class="dpi-feature">
             <i class="fas fa-network-wired"></i>
             <div>
-              <strong>Paket Manipülasyonu</strong>
-              <span>Derin paket inceleme engelleme</span>
+              <strong>Packet Manipulation</strong>
+              <span>Deep packet inspection bypass</span>
             </div>
           </div>
         </div>
 
         <div class="dpi-providers">
-          <h4>Desteklenen DNS sağlayıcıları:</h4>
+          <h4>Supported DNS providers:</h4>
           <ul>
             <li><i class="fas fa-check-circle"></i> Google DNS (8.8.8.8)</li>
             <li><i class="fas fa-check-circle"></i> Cloudflare DNS (1.1.1.1)</li>
@@ -119,7 +117,7 @@
     </div>
   </div>
 
-  <!-- Webview Konteyneri -->
+  <!-- Webview Container -->
   <div id="webview-container"></div>
 
   <!-- Renderer Script -->

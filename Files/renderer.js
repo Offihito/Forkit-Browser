@@ -1,4 +1,3 @@
-// renderer.js (debug removed)
 const tabsBar = document.getElementById('tabs-bar');
 const webviewContainer = document.getElementById('webview-container');
 const addressInput = document.getElementById('address');
@@ -30,41 +29,41 @@ let tabs = [];
 let activeTab = null;
 let tabIdCounter = 0;
 
-// Tüm sekmelerin birleşik geçmişi
+// GLOBAL HISTORY FOR ALL TABS COMBINED
 let globalHistory = [];
 
-// ==================== KALICI DEPOLAMA FONKSİYONLARI ====================
+// ==================== GLOBAL HISTORY FUNCTIONS ====================
 
-// Geçmişi yükle
+// Load history
 function loadGlobalHistory() {
   try {
     const saved = localStorage.getItem('forkit_global_history');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Tarihleri Date objesine dönüştür
+      // Convert timestamps to Date objects
       globalHistory = parsed.map(entry => ({
         ...entry,
         time: new Date(entry.time)
       }));
-      console.log('Geçmiş yüklendi:', globalHistory.length, 'kayıt');
+      console.log('History loaded:', globalHistory.length, 'entries');
     }
   } catch (error) {
-    console.error('Geçmiş yükleme hatası:', error);
+    console.error('Error loading history:', error);
     globalHistory = [];
   }
 }
 
-// Geçmişi kaydet
+// Save history
 function saveGlobalHistory() {
   try {
     localStorage.setItem('forkit_global_history', JSON.stringify(globalHistory));
-    console.log('Geçmiş kaydedildi:', globalHistory.length, 'kayıt');
+    console.log('History saved:', globalHistory.length, 'entries');
   } catch (error) {
-    console.error('Geçmiş kaydetme hatası:', error);
+    console.error('Error saving history:', error);
   }
 }
 
-// Sekme geçmişini kaydet
+// Save individual tab history
 function saveTabHistory(tab) {
   try {
     const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
@@ -74,18 +73,17 @@ function saveTabHistory(tab) {
       url: tab.url
     }));
   } catch (error) {
-    console.error('Sekme geçmişi kaydetme hatası:', error);
+    console.error('Error saving tab history:', error);
   }
 }
 
-// Sekme geçmişini yükle
+// Load individual tab history
 function loadTabHistory(tab) {
   try {
     const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
     const saved = localStorage.getItem(tabHistoryKey);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Tarihleri Date objesine dönüştür
       tab.history = parsed.history.map(entry => ({
         ...entry,
         time: new Date(entry.time)
@@ -94,15 +92,15 @@ function loadTabHistory(tab) {
       return true;
     }
   } catch (error) {
-    console.error('Sekme geçmişi yükleme hatası:', error);
+    console.error('Error loading tab history:', error);
   }
   return false;
 }
 
-// Uygulama başlarken geçmişi yükle
+// Load history on app startup
 loadGlobalHistory();
 
-// ==================== YENİ SEKME OLUŞTUR ====================
+// ==================== CREATE NEW TAB ====================
 
 function createTab(url = 'https://www.google.com') {
   const webview = document.createElement('webview');
@@ -117,14 +115,14 @@ function createTab(url = 'https://www.google.com') {
   tabElement.className = 'tab';
   tabElement.innerHTML = `
     <img class="tab-favicon" src="https://www.google.com/s2/favicons?domain=${url}&sz=32" alt="">
-    <span class="tab-title">Yeni Sekme</span>
+    <span class="tab-title">New Tab</span>
     <span class="tab-close">×</span>
   `;
   tabsBar.appendChild(tabElement);
 
   const history = [{
     url,
-    title: 'Yeni Sekme',
+    title: 'New Tab',
     favicon: `https://www.google.com/s2/favicons?domain=${url}&sz=32`,
     time: new Date()
   }];
@@ -152,7 +150,7 @@ function createTab(url = 'https://www.google.com') {
 
   webview.addEventListener('did-start-loading', () => {
     tab.isLoading = true;
-    updateTabTitle(tab, 'Yükleniyor...');
+    updateTabTitle(tab, 'Loading...');
   });
 
   webview.addEventListener('did-finish-load', () => {
@@ -160,7 +158,7 @@ function createTab(url = 'https://www.google.com') {
     const currentUrl = webview.getURL();
     
     setTimeout(() => {
-      const title = webview.getTitle() || 'Adsız Sayfa';
+      const title = webview.getTitle() || 'Untitled page';
       
       if (!tab.isNavigating) {
         if (tab.historyIndex < tab.history.length - 1) {
@@ -215,12 +213,12 @@ function createTab(url = 'https://www.google.com') {
   webview.addEventListener('did-fail-load', () => {
     tab.isLoading = false;
     if (tab === activeTab) {
-      updateTabTitle(tab, 'Yükleme Hatası');
+      updateTabTitle(tab, 'Loading Failed');
     }
   });
 
   webview.addEventListener('page-title-updated', (event) => {
-    const title = event.title || 'Adsız Sayfa';
+    const title = event.title || 'Untitled Page';
     updateTabTitle(tab, title);
     if (tab.history[tab.historyIndex]) {
       tab.history[tab.historyIndex].title = title;
@@ -253,13 +251,14 @@ function createTab(url = 'https://www.google.com') {
   setTimeout(() => {
     makeTabsDraggable();
     updateActiveTabHighlight();
+    webview.setUserAgent(userAgent);
   }, 100);
   
   return tab;
 }
 
 function updateTabTitle(tab, text = null) {
-  const title = text || tab.webview.getTitle() || 'Yeni Sekme';
+  const title = text || tab.webview.getTitle() || 'New Tab';
   tab.tabElement.querySelector('.tab-title').textContent = title;
 }
 
@@ -282,12 +281,12 @@ function switchTab(tab) {
 function closeTab(tabToClose) {
   const index = tabs.indexOf(tabToClose);
   
-  // Sekme geçmişini temizle
+  // Remove tab-specific history
   try {
     const tabHistoryKey = `forkit_tab_history_${tabToClose.tabId}`;
     localStorage.removeItem(tabHistoryKey);
   } catch (error) {
-    console.error('Sekme geçmişi temizleme hatası:', error);
+    console.error('Error clearing tab history:', error);
   }
   
   tabToClose.webview.remove();
@@ -410,10 +409,10 @@ function formatTime(date) {
   const diff = now - date;
   const dayDiff = Math.floor(diff / 86400000);
 
-  if (dayDiff === 0) return 'Bugün – ' + date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  if (dayDiff === 1) return 'Dün – ' + date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  if (dayDiff < 7) return `${dayDiff} gün önce`;
-  return date.toLocaleDateString('tr-TR');
+  if (dayDiff === 0) return 'Today – ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  if (dayDiff === 1) return 'Yesterday – ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  if (dayDiff < 7) return `${dayDiff} days ago`;
+  return date.toLocaleDateString('en-US');
 }
 
 function renderHistoryPage(filter = '') {
@@ -462,12 +461,12 @@ function renderHistoryPage(filter = '') {
     historyContent.appendChild(g);
   };
 
-  renderGroup('Bugün', groups.today);
-  renderGroup('Dün', groups.yesterday);
-  renderGroup('Daha Eski', groups.older);
+  renderGroup('Today', groups.today);
+  renderGroup('Yesterday', groups.yesterday);
+  renderGroup('Earlier', groups.older);
 
   if (list.length === 0) {
-    historyContent.innerHTML = '<p style="text-align:center;color:var(--tab-inactive);padding:60px;">Geçmiş bulunamadı.</p>';
+    historyContent.innerHTML = '<p style="text-align:center;color:var(--tab-inactive);padding:60px;">No history found.</p>';
   }
 }
 
@@ -557,7 +556,7 @@ confirmDialog.addEventListener('click', (e) => {
   }
 });
 
-// ==================== SEKME SIRALAMA – DRAG & DROP ====================
+// ==================== TAB REORDERING – DRAG & DROP ====================
 let draggedTab = null;
 
 function makeTabsDraggable() {
@@ -664,7 +663,7 @@ function updateActiveTabHighlight() {
   });
 }
 
-// ==================== CONTEXT MENU (SAĞ TIK MENÜSÜ) ====================
+// ==================== CONTEXT MENU (RIGHT-CLICK MENU) ====================
 const { ipcRenderer, clipboard, shell } = require('electron');
 
 let Menu, MenuItem;
@@ -673,12 +672,12 @@ try {
   Menu = remote.Menu;
   MenuItem = remote.MenuItem;
 } catch (e) {
-  console.warn('@electron/remote yüklü değil, context menu devre dışı');
+  console.warn('@electron/remote not available, context menu disabled');
 }
 
 function showContextMenu(event, tab) {
   if (!Menu || !MenuItem) {
-    console.warn('Context menu desteklenmiyor');
+    console.warn('Context menu not supported');
     return;
   }
 
@@ -687,7 +686,7 @@ function showContextMenu(event, tab) {
 
   if (params.selectionText) {
     menu.append(new MenuItem({
-      label: 'Kopyala',
+      label: 'Copy',
       accelerator: 'CmdOrCtrl+C',
       click: () => {
         clipboard.writeText(params.selectionText);
@@ -695,7 +694,7 @@ function showContextMenu(event, tab) {
     }));
 
     menu.append(new MenuItem({
-      label: `"${params.selectionText.substring(0, 30)}..." için Google'da ara`,
+      label: `Search Google for "${params.selectionText.substring(0, 30)}..."`,
       click: () => {
         const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}`;
         createTab(searchUrl);
@@ -707,14 +706,14 @@ function showContextMenu(event, tab) {
 
   if (params.linkURL) {
     menu.append(new MenuItem({
-      label: 'Linki yeni sekmede aç',
+      label: 'Open link in new tab',
       click: () => {
         createTab(params.linkURL);
       }
     }));
 
     menu.append(new MenuItem({
-      label: 'Link adresini kopyala',
+      label: 'Copy link address',
       click: () => {
         clipboard.writeText(params.linkURL);
       }
@@ -727,30 +726,30 @@ function showContextMenu(event, tab) {
     const imageUrl = params.srcURL;
     
     menu.append(new MenuItem({
-      label: 'Resmi yeni sekmede aç',
+      label: 'Open image in new tab',
       click: () => {
         createTab(imageUrl);
       }
     }));
 
     menu.append(new MenuItem({
-      label: 'Resim adresini kopyala',
+      label: 'Copy image address',
       click: () => {
         clipboard.writeText(imageUrl);
       }
     }));
 
     menu.append(new MenuItem({
-      label: 'Resmi farklı kaydet...',
+      label: 'Save image as...',
       click: async () => {
         try {
           const fileName = imageUrl.split('/').pop().split('?')[0] || 'image.png';
           const result = await ipcRenderer.invoke('save-image', imageUrl, fileName);
           if (result.success) {
-            console.log('Resim kaydedildi');
+            console.log('Image Saved');
           }
         } catch (error) {
-          console.error('Resim kaydetme hatası:', error);
+          console.error('Image save error:', error);
         }
       }
     }));
@@ -760,7 +759,7 @@ function showContextMenu(event, tab) {
 
   if (params.isEditable) {
     menu.append(new MenuItem({
-      label: 'Yapıştır',
+      label: 'Paste',
       accelerator: 'CmdOrCtrl+V',
       click: () => {
         tab.webview.paste();
@@ -768,7 +767,7 @@ function showContextMenu(event, tab) {
     }));
 
     menu.append(new MenuItem({
-      label: 'Kes',
+      label: 'Cut',
       accelerator: 'CmdOrCtrl+X',
       click: () => {
         tab.webview.cut();
@@ -779,19 +778,19 @@ function showContextMenu(event, tab) {
   }
 
   menu.append(new MenuItem({
-    label: 'Geri',
+    label: 'Back',
     enabled: tab.historyIndex > 0,
     click: () => goBack()
   }));
 
   menu.append(new MenuItem({
-    label: 'İleri',
+    label: 'Forward',
     enabled: tab.historyIndex < tab.history.length - 1,
     click: () => goForward()
   }));
 
   menu.append(new MenuItem({
-    label: 'Yenile',
+    label: 'Refresh',
     accelerator: 'CmdOrCtrl+R',
     click: () => reload()
   }));
@@ -799,7 +798,7 @@ function showContextMenu(event, tab) {
   menu.append(new MenuItem({ type: 'separator' }));
 
   menu.append(new MenuItem({
-    label: 'Sayfayı farklı kaydet...',
+    label: 'Save page as...',
     accelerator: 'CmdOrCtrl+S',
     click: async () => {
       try {
@@ -812,18 +811,18 @@ function showContextMenu(event, tab) {
             .then(html => {
               const fs = require('fs');
               fs.writeFileSync(result.filePath, html, 'utf8');
-              console.log('Sayfa kaydedildi:', result.filePath);
+              console.log('Page Saved:', result.filePath);
             })
-            .catch(err => console.error('Sayfa kaydetme hatası:', err));
+            .catch(err => console.error('Page save error:', err));
         }
       } catch (error) {
-        console.error('Sayfa kaydetme hatası:', error);
+        console.error('Page save error:', error);
       }
     }
   }));
 
   menu.append(new MenuItem({
-    label: 'Yazdır...',
+    label: 'Print...',
     accelerator: 'CmdOrCtrl+P',
     click: () => {
       tab.webview.print();
@@ -833,7 +832,7 @@ function showContextMenu(event, tab) {
   menu.append(new MenuItem({ type: 'separator' }));
 
   menu.append(new MenuItem({
-    label: 'Kaynağı görüntüle',
+    label: 'View source',
     click: () => {
       tab.webview.executeJavaScript('document.documentElement.outerHTML')
         .then(html => {
@@ -845,7 +844,7 @@ function showContextMenu(event, tab) {
   }));
 
   menu.append(new MenuItem({
-    label: 'Öğeyi denetle (DevTools)',
+    label: 'Inspect (DevTools)',
     accelerator: 'F12',
     click: () => {
       if (tab.webview.isDevToolsOpened()) {
@@ -859,7 +858,7 @@ function showContextMenu(event, tab) {
   menu.popup();
 }
 
-// İlk sekme
+// FIRST TAB
 createTab('https://www.google.com');
 
 setTimeout(() => {

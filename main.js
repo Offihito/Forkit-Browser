@@ -18,8 +18,10 @@ app.userAgentFallback = userAgent;
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
+    width: 1400,
     height: 800,
+    
+
     icon: path.join(__dirname, 'build', 'icon.ico'),
     webPreferences: {
       nodeIntegration: true,  

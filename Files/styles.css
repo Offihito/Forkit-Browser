@@ -40,10 +40,10 @@ body {
 .toolbar {
   background: var(--surface);
   border-bottom: 1px solid var(--outline);
-  padding: 8px 12px;
+  padding: 8px 4px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-shrink: 0;
   height: 56px;
 }
@@ -72,9 +72,11 @@ button:hover {
 }
 
 #address {
+  position: absolute;
   flex: 1;
-  height: 40px;
-  width: 900px;
+  height: 5vh;
+  width: 75vw;
+  bottom: -2.5vh;
   padding: 0 16px;
   border-radius: 24px;
   border: 1px solid var(--outline);
@@ -93,8 +95,8 @@ button:hover {
 #new-tab {
   background: var(--primary);
   color: white;
-  width: 40px;
-  height: 40px;
+  width: 4vh;
+  height: 4vh;
   font-size: 20px;
   font-weight: bold;
 }
@@ -197,8 +199,8 @@ button:hover {
 }
 
 .tab-close {
-  width: 28px;
-  height: 28px;
+  width: 2vh;
+  height: 2vh;
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s;

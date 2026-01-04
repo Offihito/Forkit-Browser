@@ -3,6 +3,8 @@ const { app, BrowserWindow, Menu, ipcMain, session, clipboard, nativeImage } = r
 const path = require('path');
 const fs = require('fs');
 
+const debug_mode = true; // default, can be changed from debug.js or here
+
 // Load @electron/remote module (if available)
 let remoteMain;
 try {
@@ -98,6 +100,9 @@ function createWindow() {
   });
 
   win.loadFile('Files/index.html');
+  if (debug_mode == true) {
+    win.webContents.openDevTools();
+  };
 }
 
 app.whenReady().then(() => {

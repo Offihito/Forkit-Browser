@@ -44,6 +44,14 @@ body {
   align-items: right;
   justify-content: flex-end;
   background: #1a1a1a;
+}
+
+.drag-area {
+  position: absolute;
+  height: 6vh;
+  top: 0;
+  left: 0;
+  width: 100vw;
   -webkit-app-region: drag;
 }
 
@@ -54,6 +62,8 @@ body {
   gap: 2px;
   -webkit-app-region: no-drag;
   right: 8px;
+  user-select: none;
+  top: 4px;
 }
 
 .window-controls button {
@@ -155,7 +165,7 @@ button:hover {
   background: var(--surface);
   display: flex;
   overflow-x: auto;
-  padding: 8px 12px 8px 12px;
+  padding: 6px 8px 0px 8px;
   gap: 6px;
   flex-shrink: 0;
   min-height: 48px;
@@ -183,6 +193,7 @@ button:hover {
   user-select: none;
   cursor: grab;
   touch-action: pan-x;
+  -webkit-app-region: no-drag;
 }
 
 .tab:active {
@@ -201,7 +212,9 @@ button:hover {
   background: var(--tab-bg);
   color: var(--on-surface);
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  opacity: 0.8;
+  -webkit-app-region: no-drag;
 }
 
 .tab.active::after {

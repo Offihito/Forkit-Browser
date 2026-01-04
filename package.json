@@ -31,28 +31,13 @@
       "output": "dist"
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "index.html",
-      "assets/**/*",
-      "build/**/*",
-      "Files/**/*",
+      "**/*",
       "!dist/**",
       "!.git/**"
     ],
     "win": {
-      "target": [
-      {
-        "target": "nsis",
-        "arch": ["x64"]
-      },
-      {
-        "target": "portable",
-        "arch": ["x64"]
-      }
-    ],
-      "icon": "build/icon.ico",
-      "artifactName": "Forkit-${version}-${target}.${ext}"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "Forkit-${version}-portable.exe"

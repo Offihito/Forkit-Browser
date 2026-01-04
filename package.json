@@ -1,6 +1,6 @@
 {
   "name": "forkit",
-  "version": "1.0.0",
+  "version": "1.1.5",
   "description": "Open Source Browser Based on Chromium",
   "main": "main.js",
   "homepage": "./",
@@ -42,9 +42,15 @@
     ],
     "win": {
       "target": [
-        "portable",
-        "nsis"
-      ],
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
       "icon": "build/icon.ico",
       "artifactName": "Forkit-${version}-${target}.${ext}"
     },
@@ -56,7 +62,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "perMachine": false
+      "perMachine": false,
+      "shortcutName": "Forkit Browser"
     },
     "mac": {
       "target": [

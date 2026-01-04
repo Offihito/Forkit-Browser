@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain, session, clipboard, nativeImage } = r
 const path = require('path');
 const fs = require('fs');
 
-const debug_mode = true; // default, can be changed from debug.js or here
+const debug_mode = false; // default, can be changed from debug.js or here
 
 // Load @electron/remote module (if available)
 let remoteMain;

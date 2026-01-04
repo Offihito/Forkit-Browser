@@ -98,7 +98,6 @@ function createWindow() {
   });
 
   win.loadFile('Files/index.html');
-  win.webContents.openDevTools({ mode: "detach" });
 }
 
 app.whenReady().then(() => {

@@ -31,12 +31,18 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!dist/**",
-      "!.git/**"
+      "main.js",
+      "preload.js",
+      "Files/**/*",
+      "assets/**/*",
+      "build/**/*",
+      "package.json"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "build/icon.ico"
     },
     "portable": {

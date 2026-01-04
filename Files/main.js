@@ -26,7 +26,7 @@ function createWindow() {
       webviewTag: true,
       webSecurity: true,
       allowRunningInsecureContent: true,
-      enableRemoteModule: true
+      enableRemoteModule: true,
     }
   });
 

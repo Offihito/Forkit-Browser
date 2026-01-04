@@ -20,16 +20,19 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
     height: 800,
-    
+    frame: false,
+    titleBarStyle: "hidden",
 
     icon: path.join(__dirname, 'build', 'icon.ico'),
     webPreferences: {
-      nodeIntegration: true,  
-      contextIsolation: false, 
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.resolve(__dirname, "Files", "preload.js"),
       webviewTag: true,
       webSecurity: true,
-      allowRunningInsecureContent: true,
-      enableRemoteModule: true
+      allowRunningInsecureContent: false,
+      maximizable: true,
+      minimizable: true
     }
   });
 
@@ -95,6 +98,7 @@ function createWindow() {
   });
 
   win.loadFile('Files/index.html');
+  win.webContents.openDevTools({ mode: "detach" });
 }
 
 app.whenReady().then(() => {
@@ -129,6 +133,34 @@ app.on('window-all-closed', () => {
 // Close app when last tab is closed
 ipcMain.on('close-app', () => {
   app.quit();
+});
+
+// Window controls
+ipcMain.on('window-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+
+  if (win.isMinimized()) {
+    win.restore();
+  } else {
+    win.minimize();
+  }
+});
+
+ipcMain.on('window-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
+
+ipcMain.on('window-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
 });
 
 // Context menu - Save Image
@@ -171,8 +203,168 @@ ipcMain.handle('save-image', async (event, imageUrl, suggestedName) => {
   }
 });
 
+// New: Show context menu requested from renderer (params come from webview context-menu event)
+ipcMain.on('show-context-menu', (event, params, tabId) => {
+  try {
+    console.log('Context menu requested:', { tabId, selectionText: params.selectionText || null, linkURL: params.linkURL || null, srcURL: params.srcURL || null });
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const Menu = require('electron').Menu;
+    const MenuItem = require('electron').MenuItem;
+    const menu = new Menu();
+
+    // Helper to send commands back to renderer for actions that must run there
+    const sendCmd = (action, payload = {}) => {
+      event.sender.send('context-menu-command', { action, tabId, ...payload });
+    };
+
+    if (params.selectionText) {
+      menu.append(new MenuItem({
+        label: 'Copy',
+        accelerator: 'CmdOrCtrl+C',
+        click: () => {
+          clipboard.writeText(params.selectionText);
+        }
+      }));
+
+      menu.append(new MenuItem({
+        label: `Search Google for "${params.selectionText.substring(0, 30)}..."`,
+        click: () => sendCmd('create-tab', { url: `https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}` })
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+    }
+
+    if (params.linkURL) {
+      menu.append(new MenuItem({
+        label: 'Open link in new tab',
+        click: () => sendCmd('create-tab', { url: params.linkURL })
+      }));
+
+      menu.append(new MenuItem({
+        label: 'Copy link address',
+        click: () => clipboard.writeText(params.linkURL)
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+    }
+
+    if (params.hasImageContents || params.srcURL) {
+      const imageUrl = params.srcURL;
+      menu.append(new MenuItem({
+        label: 'Open image in new tab',
+        click: () => sendCmd('create-tab', { url: imageUrl })
+      }));
+
+      menu.append(new MenuItem({
+        label: 'Copy image address',
+        click: () => clipboard.writeText(imageUrl)
+      }));
+
+      menu.append(new MenuItem({
+        label: 'Save image as...',
+        click: async () => {
+          try {
+            // Reuse existing save-image logic
+            const result = await ipcMain.invoke ? ipcMain.invoke('save-image', imageUrl) : null;
+            // If invoked via ipcMain.invoke is not available for use here, fall back to the handler logic
+            if (!result) {
+              const { dialog } = require('electron');
+              const https = require('https');
+              const http = require('http');
+              const res = await dialog.showSaveDialog({ defaultPath: imageUrl.split('/').pop().split('?')[0] || 'image.png' });
+              if (!res.canceled && res.filePath) {
+                const protocol = imageUrl.startsWith('https') ? https : http;
+                protocol.get(imageUrl, (response) => {
+                  if (response.statusCode === 200) {
+                    const fileStream = fs.createWriteStream(res.filePath);
+                    response.pipe(fileStream);
+                    fileStream.on('finish', () => fileStream.close());
+                  }
+                }).on('error', (err) => console.error('Download failed', err));
+              }
+            }
+          } catch (err) {
+            console.error('Save image error from context menu:', err);
+          }
+        }
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+    }
+
+    if (params.isEditable) {
+      menu.append(new MenuItem({
+        label: 'Paste',
+        accelerator: 'CmdOrCtrl+V',
+        click: () => sendCmd('paste')
+      }));
+
+      menu.append(new MenuItem({
+        label: 'Cut',
+        accelerator: 'CmdOrCtrl+X',
+        click: () => sendCmd('cut')
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+    }
+
+    menu.append(new MenuItem({
+      label: 'Back',
+      enabled: (params.canGoBack ?? false),
+      click: () => sendCmd('back')
+    }));
+
+    menu.append(new MenuItem({
+      label: 'Forward',
+      enabled: (params.canGoForward ?? false),
+      click: () => sendCmd('forward')
+    }));
+
+    menu.append(new MenuItem({
+      label: 'Refresh',
+      accelerator: 'CmdOrCtrl+R',
+      click: () => sendCmd('reload')
+    }));
+
+    menu.append(new MenuItem({ type: 'separator' }));
+
+    menu.append(new MenuItem({
+      label: 'Save page as...',
+      accelerator: 'CmdOrCtrl+S',
+      click: async () => {
+        // ask renderer for HTML first
+        sendCmd('request-html');
+      }
+    }));
+
+    menu.append(new MenuItem({
+      label: 'Print...',
+      accelerator: 'CmdOrCtrl+P',
+      click: () => sendCmd('print')
+    }));
+
+    menu.append(new MenuItem({ type: 'separator' }));
+
+    menu.append(new MenuItem({
+      label: 'View source',
+      click: () => sendCmd('view-source')
+    }));
+
+    menu.append(new MenuItem({
+      label: 'Inspect (DevTools)',
+      accelerator: 'F12',
+      click: () => sendCmd('inspect')
+    }));
+
+    // Popup the menu at cursor
+    if (win) menu.popup({ window: win });
+  } catch (err) {
+    console.error('Error building context menu:', err);
+  }
+});
+
 // Context menu - Save Page
-ipcMain.handle('save-page', async (event, url, title) => {
+ipcMain.handle('save-page', async (event, url, title, html) => {
   const { dialog } = require('electron');
   
   try {
@@ -185,6 +377,7 @@ ipcMain.handle('save-page', async (event, url, title) => {
     });
 
     if (!result.canceled && result.filePath) {
+      fs.writeFileSync(result.filePath, html || '<!-- empty -->', 'utf8');
       return { success: true, filePath: result.filePath };
     }
     return { success: false };

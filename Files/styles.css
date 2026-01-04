@@ -22,7 +22,7 @@
     --outline: #303134;
     --tab-bg: rgba(45,45,45,0.9);
     --tab-inactive: #9aa0a6;
-    --error: #f28b82;
+    --error: #e81123;
   }
 }
 
@@ -36,6 +36,52 @@ body {
   display: flex;
   flex-direction: column;
 }
+/*Titlebar and window*/
+.titlebar {
+  position: absolute;
+  height: 2vh;
+  display: flex;
+  align-items: right;
+  justify-content: flex-end;
+  background: #1a1a1a;
+  -webkit-app-region: drag;
+}
+
+.window-controls {
+  position: absolute;
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+  right: 8px;
+}
+
+.window-controls button {
+  -webkit-app-region: no-drag;
+  background: none;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+#min-btn::before {
+  content: "";
+  display: block;
+  width: 10px;       /* dash uzunluğu */
+  height: 2px;       /* dash kalınlığı */
+  background: white;
+  margin: auto;
+}
+#close-btn:hover {
+  background: var(--error);
+}
+
+.window-controls button:hover {
+  background: #333;
+}
+/*Titlebar and window*/
 
 .toolbar {
   background: var(--surface);
@@ -124,8 +170,8 @@ button:hover {
   color: var(--tab-inactive);
   padding: 10px 16px;
   border-radius: 16px 16px 0 0;
-  min-width: 120px;
-  max-width: 280px;
+  min-width: 8vw;
+  max-width: 14vw;
   display: flex;
   align-items: center;
   gap: 10px;

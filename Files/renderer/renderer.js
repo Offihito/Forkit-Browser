@@ -3,6 +3,8 @@ import { makeTabsDraggable, updateActiveTabHighlight } from "./tabs/tabDrag.js";
 import { initIPC } from "./ipc/ipcHandlers.js";
 import { loadGlobalHistory } from "./history/globalHistory.js";
 import { initNavigation } from "./navigation/navigation.js";
+import { initDownloadManager } from "./downloads/downloadManager.js";
+import { startDownload } from "./downloads/downloadManager.js";
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log("windowAPI working.");
@@ -19,9 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize navigation with createTab function
   initNavigation(createTab);
+  initDownloadManager();
+  
+  // ========== WEBVIEW DOWNLOAD LISTENER ==========
+  // Main process'ten gelen download isteklerini dinle
+  window.windowAPI?.onStartDownloadFromWebview((data) => {
+    console.log('Download request from webview:', data);
+    startDownload(data.url, data.filename);
+  });
+  // ========== END WEBVIEW DOWNLOAD LISTENER ==========
 
   // FIRST TAB
-  createTab('https://www.google.com');
+  createTab('newtab.html');
 
   setTimeout(() => {
     makeTabsDraggable();

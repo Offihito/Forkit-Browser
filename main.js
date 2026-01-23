@@ -99,6 +99,24 @@ function createWindow() {
     callback({ requestHeaders: headers });
   });
 
+  // ========== DOWNLOAD HANDLER - WEBVIEW SESSION ==========
+  webviewSession.on('will-download', (event, item, webContents) => {
+    // İndirmeyi iptal et - kendi sistemimizi kullanacağız
+    event.preventDefault();
+    
+    const url = item.getURL();
+    const filename = item.getFilename();
+    
+    console.log('Download intercepted:', { url, filename });
+    
+    // Renderer'a download başlat komutu gönder
+    win.webContents.send('start-download-from-webview', {
+      url: url,
+      filename: filename
+    });
+  });
+  // ========== END DOWNLOAD HANDLER ==========
+
   win.loadFile('Files/index.html');
   if (debug_mode == true) {
     win.webContents.openDevTools();
@@ -167,46 +185,6 @@ ipcMain.on('window-close', (event) => {
   if (win) win.close();
 });
 
-// Context menu - Save Image
-ipcMain.handle('save-image', async (event, imageUrl, suggestedName) => {
-  const { dialog } = require('electron');
-  const https = require('https');
-  const http = require('http');
-  
-  try {
-    const result = await dialog.showSaveDialog({
-      defaultPath: suggestedName || 'image.png',
-      filters: [
-        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    });
-
-    if (!result.canceled && result.filePath) {
-      const protocol = imageUrl.startsWith('https') ? https : http;
-      
-      return new Promise((resolve, reject) => {
-        protocol.get(imageUrl, (response) => {
-          if (response.statusCode === 200) {
-            const fileStream = fs.createWriteStream(result.filePath);
-            response.pipe(fileStream);
-            fileStream.on('finish', () => {
-              fileStream.close();
-              resolve({ success: true });
-            });
-          } else {
-            reject(new Error('Download failed'));
-          }
-        }).on('error', reject);
-      });
-    }
-    return { success: false };
-  } catch (error) {
-    console.error('Image save error:', error);
-    return { success: false, error: error.message };
-  }
-});
-
 // New: Show context menu requested from renderer (params come from webview context-menu event)
 ipcMain.on('show-context-menu', (event, params, tabId) => {
   try {
@@ -266,30 +244,10 @@ ipcMain.on('show-context-menu', (event, params, tabId) => {
 
       menu.append(new MenuItem({
         label: 'Save image as...',
-        click: async () => {
-          try {
-            // Reuse existing save-image logic
-            const result = await ipcMain.invoke ? ipcMain.invoke('save-image', imageUrl) : null;
-            // If invoked via ipcMain.invoke is not available for use here, fall back to the handler logic
-            if (!result) {
-              const { dialog } = require('electron');
-              const https = require('https');
-              const http = require('http');
-              const res = await dialog.showSaveDialog({ defaultPath: imageUrl.split('/').pop().split('?')[0] || 'image.png' });
-              if (!res.canceled && res.filePath) {
-                const protocol = imageUrl.startsWith('https') ? https : http;
-                protocol.get(imageUrl, (response) => {
-                  if (response.statusCode === 200) {
-                    const fileStream = fs.createWriteStream(res.filePath);
-                    response.pipe(fileStream);
-                    fileStream.on('finish', () => fileStream.close());
-                  }
-                }).on('error', (err) => console.error('Download failed', err));
-              }
-            }
-          } catch (err) {
-            console.error('Save image error from context menu:', err);
-          }
+        click: () => {
+          // Send download command to renderer
+          const fileName = imageUrl.split('/').pop().split('?')[0] || 'image.png';
+          sendCmd('download-image', { url: imageUrl, fileName });
         }
       }));
 
@@ -335,9 +293,9 @@ ipcMain.on('show-context-menu', (event, params, tabId) => {
     menu.append(new MenuItem({
       label: 'Save page as...',
       accelerator: 'CmdOrCtrl+S',
-      click: async () => {
-        // ask renderer for HTML first
-        sendCmd('request-html');
+      click: () => {
+        // Ask renderer to get HTML and trigger download
+        sendCmd('download-page');
       }
     }));
 
@@ -367,26 +325,51 @@ ipcMain.on('show-context-menu', (event, params, tabId) => {
   }
 });
 
-// Context menu - Save Page
-ipcMain.handle('save-page', async (event, url, title, html) => {
+// Download Manager
+ipcMain.on('download-item', (event, downloadUrl, fileName) => {
   const { dialog } = require('electron');
+  const https = require('https');
+  const http = require('http');
   
-  try {
-    const result = await dialog.showSaveDialog({
-      defaultPath: (title || 'page').replace(/[<>:"/\\|?*]/g, '_') + '.html',
-      filters: [
-        { name: 'HTML File', extensions: ['html'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    });
-
+  dialog.showSaveDialog({
+    defaultPath: fileName || 'download',
+    properties: ['createDirectory']
+  }).then(result => {
     if (!result.canceled && result.filePath) {
-      fs.writeFileSync(result.filePath, html || '<!-- empty -->', 'utf8');
-      return { success: true, filePath: result.filePath };
+      const protocol = downloadUrl.startsWith('https') ? https : http;
+      const file = fs.createWriteStream(result.filePath);
+      
+      protocol.get(downloadUrl, (response) => {
+        const totalSize = parseInt(response.headers['content-length'], 10);
+        let downloaded = 0;
+        
+        response.on('data', (chunk) => {
+          downloaded += chunk.length;
+          const progress = totalSize ? (downloaded / totalSize) * 100 : 0;
+          event.sender.send('download-progress', { 
+            fileName: result.filePath.split(/[\\/]/).pop(),
+            progress: Math.round(progress),
+            downloaded,
+            totalSize
+          });
+        });
+        
+        response.pipe(file);
+        
+        file.on('finish', () => {
+          file.close();
+          event.sender.send('download-complete', { 
+            fileName: result.filePath.split(/[\\/]/).pop(),
+            filePath: result.filePath 
+          });
+        });
+      }).on('error', (err) => {
+        fs.unlink(result.filePath, () => {});
+        event.sender.send('download-error', { 
+          fileName: result.filePath.split(/[\\/]/).pop(),
+          error: err.message 
+        });
+      });
     }
-    return { success: false };
-  } catch (error) {
-    console.error('Page save error:', error);
-    return { success: false, error: error.message };
-  }
+  });
 });

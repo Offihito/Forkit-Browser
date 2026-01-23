@@ -11,6 +11,11 @@ export const dom = {
   goBtn: document.getElementById('go'),
   newTabBtn: document.getElementById('new-tab'),
   historyBtn: document.getElementById('history-btn'),
+  downloadBtn: document.getElementById('download-btn'), 
+
+  downloadPanel: document.getElementById('download-panel'),
+  downloadClose: document.getElementById('download-close'),
+  downloadList: document.getElementById('download-list'),
 
   historyPage: document.getElementById('history-page'),
   historyClose: document.getElementById('history-close'),

@@ -36,11 +36,22 @@ export function reload() {
 }
 
 export function goHome() {
-  navigateTo('https://www.google.com'); 
+  navigateTo('newtab.html');
 }
 
 export function navigateTo(url) {
   if (!url || !state.activeTab) return;
+  
+  // Download command check
+  if (url.startsWith('download:')) {
+    const downloadUrl = url.replace('download:', '').trim();
+    import("../downloads/downloadManager.js").then(({ startDownload }) => {
+      const fileName = downloadUrl.split('/').pop().split('?')[0] || 'download';
+      startDownload(downloadUrl, fileName);
+    });
+    dom.addressInput.value = '';
+    return;
+  }
   
   state.activeTab.isNavigating = false;
   
@@ -53,7 +64,8 @@ export function navigateTo(url) {
       displayUrl = url;
     } else {
       actualUrl = 'https://www.google.com/search?q=' + encodeURIComponent(url);
-      displayUrl = url;
+      displayUrl = url; // Arama terimini sakla
+      state.activeTab.searchTerm = url; // Arama terimini tab'a kaydet
     }
   }
   

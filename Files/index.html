@@ -32,7 +32,13 @@
       </div>
     </div>
   </div>
-
+  <div id="download-panel" class="download-panel">
+    <div class="download-header">
+      <h3><i class="fas fa-download"></i> Downloads</h3>
+      <button id="download-close">×</button>
+    </div>
+    <div id="download-list"></div>
+  </div>
   <!-- Top Toolbar -->
   <div class="toolbar">
     <button id="back" title="Back"><i class="fas fa-chevron-left"></i></button>
@@ -47,12 +53,24 @@
 
     <button id="go" title="Go"><i class="fas fa-arrow-right"></i></button>
     <button id="dpi-indicator" title="DPI Bypass Active"><i class="fas fa-shield-alt"></i></button>
+    <button id="download-btn" title="Downloads"><i class="fas fa-download"></i></button>
     <button id="history-btn" title="History"><i class="fas fa-history"></i></button>
     <button id="new-tab" title="New Tab">+</button>
   </div>
 
   <!-- History Page -->
   <div id="history-page" class="modal-page">
+     <!-- Tabs Bar -->
+  <div class="tabs-bar" id="tabs-bar">
+    <div id="title-bar">
+      <div class="drag-area"></div>
+      <div class="window-controls">
+        <button id="close-btn">✕</button>
+        <button id="max-btn">☐</button>
+        <button id="min-btn"></button>
+      </div>
+    </div>
+  </div>
     <div id="history-header">
       <h2>History</h2>
       <input type="text" id="history-search" placeholder="Search in history..." />

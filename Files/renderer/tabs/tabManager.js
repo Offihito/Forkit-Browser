@@ -6,7 +6,7 @@ import { updateHistoryDropdown } from "../ui/historyUI.js";
 import { saveTabHistory, saveGlobalHistory } from "../history/globalHistory.js";
 import { userAgent } from "../env/userAgent.js";
 
-export function createTab(url = "https://www.google.com") {
+export function createTab(url = "newtab.html") {
   const webview = document.createElement('webview');
   webview.src = url;
   webview.partition = 'persist:browser';
@@ -105,7 +105,6 @@ export function createTab(url = "https://www.google.com") {
       tab.url = currentUrl;
       if (tab === state.activeTab) {
         dom.addressInput.value = currentUrl;
-        // updateNavigationButtons();
         updateHistoryDropdown();
       }
       updateTabTitle(tab, title);
@@ -138,8 +137,32 @@ export function createTab(url = "https://www.google.com") {
 
   webview.addEventListener('context-menu', (e) => {
     e.preventDefault();
-    // Send params to main to build native menu
     window.windowAPI?.showContextMenu(e.params, tab.tabId);
+  });
+
+  // new-window event - yeni sekme veya indirme için
+  webview.addEventListener('new-window', (e) => {
+    e.preventDefault();
+    const url = e.url;
+    
+    // İndirilebilir dosya uzantıları
+    const downloadExtensions = ['.pdf', '.zip', '.rar', '.7z', '.tar', '.gz', 
+                               '.exe', '.dmg', '.pkg', '.deb', '.rpm',
+                               '.mp3', '.mp4', '.avi', '.mkv', '.mov', '.flv',
+                               '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+                               '.iso', '.apk', '.ipa'];
+    
+    const isDownloadable = downloadExtensions.some(ext => url.toLowerCase().includes(ext));
+    
+    if (isDownloadable) {
+      import("../downloads/downloadManager.js").then(({ startDownload }) => {
+        const fileName = url.split('/').pop().split('?')[0];
+        startDownload(url, fileName);
+      });
+    } else {
+      // Normal link - aynı sekmede aç
+      webview.loadURL(url);
+    }
   });
 
   tabElement.addEventListener('click', (e) => {
@@ -173,7 +196,6 @@ export function switchTab(tab) {
   tab.tabElement.classList.add('active');
 
   dom.addressInput.value = tab.url || '';
-  // updateNavigationButtons();
   updateHistoryDropdown();
   updateActiveTabHighlight();
 }
@@ -181,7 +203,6 @@ export function switchTab(tab) {
 export function closeTab(tab) {
   const index = state.tabs.indexOf(tab);
   
-  // Remove tab-specific history
   try {
     const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
     localStorage.removeItem(tabHistoryKey);

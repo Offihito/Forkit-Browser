@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="newtab.css" />
+</head>
+<body>
+  <button class="settings-btn" onclick="toggleTheme()" title="Toggle Theme">
+    <i class="fas fa-adjust"></i>
+  </button>
+
+    <div class="Logo">
+      <h1 class="Forkit">Forkit</h1>
+    <p class="Description">Browse Freely, Bypass Effortlessly</p>
+     </div>
+
+  <div class="container">
+    <div class="time-widget">
+      <div class="time" id="time">00:00</div>
+      <div class="date" id="date">Loading...</div>
+    </div>
+
+    <div class="search-container">
+      <form class="search-box" onsubmit="handleSearch(event)">
+        <input 
+          type="text" 
+          class="search-input" 
+          id="searchInput"
+          placeholder="Search the web or enter URL..."
+          autocomplete="off"
+          autofocus
+        >
+        <button type="submit" class="search-btn">
+          <i class="fas fa-search"></i>
+        </button>
+      </form>
+    </div>
+
+    <div class="quick-links">
+      <a class="quick-link" onclick="navigate('https://www.google.com')">
+        <i class="fab fa-google"></i>
+        <span>Google</span>
+      </a>
+      <a class="quick-link" onclick="navigate('https://www.youtube.com')">
+        <i class="fab fa-youtube"></i>
+        <span>YouTube</span>
+      </a>
+      <a class="quick-link" onclick="navigate('https://www.github.com')">
+        <i class="fab fa-github"></i>
+        <span>GitHub</span>
+      </a>
+      <a class="quick-link" onclick="navigate('https://www.twitter.com')">
+        <i class="fab fa-twitter"></i>
+        <span>Twitter</span>
+      </a>
+      <a class="quick-link" onclick="navigate('https://www.reddit.com')">
+        <i class="fab fa-reddit"></i>
+        <span>Reddit</span>
+      </a>
+    </div>
+  </div>
+
+<script src="helpers/clock.js"></script>
+</body>
+</html>

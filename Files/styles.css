@@ -790,3 +790,141 @@ webview.active {
     background: #8ab4f8;
   }
 }
+
+/* Download Panel */
+.download-panel {
+  position: fixed;
+  right: 16px;
+  top: 104px;
+  width: 400px;
+  max-height: 500px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  z-index: 9998;
+  display: none;
+  flex-direction: column;
+  backdrop-filter: blur(20px);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.download-panel.open {
+  display: flex;
+  animation: slideDown 0.2s ease forwards;
+}
+
+@keyframes slideDown {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.download-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--outline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.download-header h3 {
+  font-size: 18px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+#download-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--on-surface);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+#download-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.download-item {
+  background: var(--bg);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+}
+
+.download-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.download-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.download-item-header i {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.download-item-name {
+  flex: 1;
+  font-weight: 500;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-progress-bar {
+  height: 6px;
+  background: var(--outline);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.download-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.download-item-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--tab-inactive);
+}
+
+.download-complete {
+  border-color: #34a853;
+}
+
+.download-complete .download-item-header i {
+  color: #34a853;
+}
+
+.download-error {
+  border-color: var(--error);
+}
+
+.download-error .download-item-header i {
+  color: var(--error);
+}

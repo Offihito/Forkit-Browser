@@ -70,6 +70,8 @@
       "target": [
         "AppImage",
         "deb",
+        "rpm",
+        "pacman",
         "snap"
       ],
       "icon": "build/icon.png",

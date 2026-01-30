@@ -30,15 +30,16 @@
     "directories": {
       "output": "dist"
     },
-    "files": [
-      "main.js",
-      "preload.js",
-      "Files/**/*",
-      "assets/**/*",
-      "build/**/*",
-      "package.json",
-      "!node_modules/**"
-    ],
+   "files": [
+    "main.js",
+    "preload.js",
+    "adBlocker.js",           
+    "Files/**/*",
+    "assets/**/*",
+    "build/**/*",
+    "package.json",
+    "!node_modules/**"
+  ],
     "win": {
       "target": [
         "nsis",
@@ -88,9 +89,9 @@
     "electron-builder": "^26.0.12"
   },
   "dependencies": {
-    "@cliqz/adblocker-electron": "^1.34.0",
     "@electron/remote": "^2.1.3",
     "@getstation/electron-google-oauth2": "^14.0.0",
+    "@ghostery/adblocker-electron": "^2.13.4",
     "cross-fetch": "^4.1.0",
     "electron-dl": "^4.0.0"
   }

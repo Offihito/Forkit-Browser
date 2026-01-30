@@ -2,7 +2,7 @@
 const { app, BrowserWindow, Menu, ipcMain, session, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const AdBlocker = require('./adBlocker');
+const AdBlocker = require('./adBlocker.js');
 
 const debug_mode = false;
 

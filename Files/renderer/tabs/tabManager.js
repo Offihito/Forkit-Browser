@@ -52,6 +52,34 @@ export function createTab(url = "newtab.html") {
     saveTabHistory(tab);
   };
 
+  // ========== HISTORY DATA INJECTION FOR NEWTAB ==========
+  // Webview'a history datasını gönder (newtab.html için)
+  webview.addEventListener('dom-ready', () => {
+    // Eğer newtab.html yüklendiyse history datasını gönder
+    if (webview.getURL().includes('newtab.html')) {
+      console.log('Sending history data to newtab webview...', state.globalHistory.length, 'entries');
+      
+      // postMessage ile webview'a history gönder
+      webview.executeJavaScript(`
+        window.postMessage({
+          type: 'history-data',
+          history: ${JSON.stringify(state.globalHistory)}
+        }, '*');
+      `).catch(err => {
+        console.error('Error sending history to webview:', err);
+      });
+    }
+  });
+  
+  // Webview'dan mesaj dinle
+  webview.addEventListener('ipc-message', (event) => {
+    if (event.channel === 'request-history') {
+      console.log('History data requested from newtab webview');
+      webview.send('history-data', state.globalHistory);
+    }
+  });
+  // ========== END HISTORY DATA INJECTION ==========
+
   webview.addEventListener('did-start-loading', () => {
     tab.isLoading = true;
     updateTabTitle(tab, 'Loading...');

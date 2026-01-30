@@ -1,4 +1,4 @@
-  * {
+* {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
@@ -140,8 +140,8 @@
 
     .quick-links {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
       margin-bottom: 40px;
       animation: fadeInUp 0.8s ease 0.4s both;
     }
@@ -160,14 +160,19 @@
     .quick-link {
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      padding: 24px;
-      border-radius: 20px;
+      padding: 16px;
+      border-radius: 16px;
       text-align: center;
       text-decoration: none;
       color: var(--text-light);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .quick-link:hover {
@@ -176,6 +181,18 @@
       background: white;
     }
 
+    /* Favicon image styling - GERÇEK FAVICON'LAR İÇİN */
+    .quick-link-favicon {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: white;
+      padding: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Eski icon stilleri - artık kullanılmıyor ama uyumluluk için bırakıldı */
     .quick-link i {
       font-size: 36px;
       margin-bottom: 12px;
@@ -187,9 +204,13 @@
     }
 
     .quick-link span {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
     }
 
     .settings-btn {
@@ -243,8 +264,13 @@
       }
 
       .quick-links {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        gap: 10px;
+      }
+      
+      .quick-link-favicon {
+        width: 32px;
+        height: 32px;
       }
     }
 
@@ -265,4 +291,8 @@
 
     body.dark .quick-link:hover {
       background: rgba(26, 26, 46, 1);
+    }
+    
+    body.dark .quick-link-favicon {
+      background: rgba(255, 255, 255, 0.1);
     }

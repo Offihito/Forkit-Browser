@@ -951,6 +951,20 @@ webview.active {
   justify-content: space-between;
   font-size: 12px;
   color: var(--tab-inactive);
+  margin-bottom: 4px;
+}
+
+.download-item-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--tab-inactive);
+  opacity: 0.8;
+}
+
+.download-size,
+.download-time {
+  font-family: 'Courier New', monospace;
 }
 
 .download-complete {

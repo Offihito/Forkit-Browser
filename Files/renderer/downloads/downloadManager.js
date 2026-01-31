@@ -2,6 +2,22 @@ import { dom } from "../core/dom.js";
 
 let downloads = [];
 
+// Helper functions
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
+function formatTime(seconds) {
+  if (!seconds || seconds === Infinity) return 'Calculating...';
+  if (seconds < 60) return Math.round(seconds) + ' sec';
+  if (seconds < 3600) return Math.round(seconds / 60) + ' min';
+  return Math.round(seconds / 3600) + ' hr';
+}
+
 export function initDownloadManager() {
   // Download panel toggle
   dom.downloadBtn.onclick = () => {
@@ -14,15 +30,15 @@ export function initDownloadManager() {
 
   // Listen to download events
   window.windowAPI?.onDownloadProgress((data) => {
-    updateDownloadItem(data.fileName, data.progress, 'downloading');
+    updateDownloadItem(data.fileName, data.progress, 'downloading', data);
   });
 
   window.windowAPI?.onDownloadComplete((data) => {
-    updateDownloadItem(data.fileName, 100, 'complete');
+    updateDownloadItem(data.fileName, 100, 'complete', data);
   });
 
   window.windowAPI?.onDownloadError((data) => {
-    updateDownloadItem(data.fileName, 0, 'error');
+    updateDownloadItem(data.fileName, 0, 'error', data);
   });
 }
 
@@ -90,29 +106,58 @@ function addDownloadItem(fileName) {
       <span class="download-status">Starting...</span>
       <span class="download-percentage">0%</span>
     </div>
+    <div class="download-item-details">
+      <span class="download-size">Size: Calculating...</span>
+      <span class="download-time">Time: Calculating...</span>
+    </div>
   `;
   
   dom.downloadList.insertBefore(item, dom.downloadList.firstChild);
 }
 
-function updateDownloadItem(fileName, progress, status) {
+function updateDownloadItem(fileName, progress, status, data = {}) {
   const item = dom.downloadList.querySelector(`[data-file-name="${fileName}"]`);
   if (!item) return;
   
   const fill = item.querySelector('.download-progress-fill');
   const statusEl = item.querySelector('.download-status');
   const percentEl = item.querySelector('.download-percentage');
+  const sizeEl = item.querySelector('.download-size');
+  const timeEl = item.querySelector('.download-time');
   
   fill.style.width = progress + '%';
   percentEl.textContent = progress + '%';
   
+  // Update size and time if available
+  if (data.totalSize) {
+    const downloaded = data.downloaded || 0;
+    sizeEl.textContent = `${formatBytes(downloaded)} / ${formatBytes(data.totalSize)}`;
+    
+    // Calculate estimated time remaining
+    if (progress > 0 && progress < 100) {
+      const elapsedTime = (Date.now() - (item.dataset.startTime || Date.now())) / 1000;
+      const speed = downloaded / elapsedTime; // bytes per second
+      const remaining = data.totalSize - downloaded;
+      const timeRemaining = remaining / speed;
+      
+      timeEl.textContent = `Time remaining: ${formatTime(timeRemaining)}`;
+    }
+  }
+  
+  // Store start time for calculations
+  if (!item.dataset.startTime) {
+    item.dataset.startTime = Date.now();
+  }
+  
   if (status === 'complete') {
     item.classList.add('download-complete');
     statusEl.textContent = 'Complete';
+    timeEl.textContent = 'Completed';
     item.querySelector('.download-item-header i').className = 'fas fa-check-circle';
   } else if (status === 'error') {
     item.classList.add('download-error');
     statusEl.textContent = 'Failed';
+    timeEl.textContent = 'Failed';
     item.querySelector('.download-item-header i').className = 'fas fa-exclamation-circle';
   } else {
     statusEl.textContent = 'Downloading...';

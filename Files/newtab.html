@@ -8,9 +8,52 @@
   <link rel="stylesheet" href="newtab.css" />
 </head>
 <body>
-  <button class="settings-btn" onclick="toggleTheme()" title="Toggle Theme">
-    <i class="fas fa-adjust"></i>
-  </button>
+  <div class="top-buttons">
+    <button class="settings-btn" onclick="openSettings()" title="Settings">
+      <i class="fas fa-cog"></i>
+    </button>
+    <button class="theme-btn" onclick="toggleTheme()" title="Toggle Theme">
+      <i class="fas fa-adjust"></i>
+    </button>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeSettings()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="close-btn" onclick="closeSettings()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="setting-section">
+          <h3>Background Image</h3>
+          <p class="setting-description">Customize your new tab background</p>
+          
+          <div class="background-preview" id="backgroundPreview">
+            <div class="preview-placeholder">
+              <i class="fas fa-image"></i>
+              <span>Current Background</span>
+            </div>
+          </div>
+          
+          <div class="button-group">
+            <label class="upload-btn">
+              <i class="fas fa-upload"></i>
+              Choose Image
+              <input type="file" id="backgroundUpload" accept="image/*" onchange="handleBackgroundUpload(event)" hidden>
+            </label>
+            <button class="reset-btn" onclick="resetBackground()">
+              <i class="fas fa-undo"></i>
+              Reset to Default
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
     <div class="Logo">
       <h1 class="Forkit">Forkit</h1>
@@ -45,5 +88,6 @@
   </div>
 
 <script src="helpers/clock.js"></script>
+<script src="helpers/settings.js"></script>
 </body>
 </html>

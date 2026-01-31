@@ -46,13 +46,25 @@ body {
   background: #1a1a1a;
 }
 
-.drag-area {
+#title-bar {
   position: absolute;
-  height: 6vh;
   top: 0;
   left: 0;
-  width: 100vw;
-  -webkit-app-region: drag;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#title-bar > * {
+  pointer-events: auto;
+}
+
+.drag-area {
+  display: none;
 }
 
 .window-controls {
@@ -64,6 +76,7 @@ body {
   right: 8px;
   user-select: none;
   top: 4px;
+  z-index: 250;
 }
 
 .window-controls button {
@@ -149,16 +162,38 @@ button:hover {
 }
 
 #new-tab {
-  background: var(--primary);
-  color: white;
-  width: 4vh;
-  height: 4vh;
+  background: transparent;
+  color: var(--on-surface);
+  width: 32px;
+  height: 32px;
+  top: 4px;
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 0px;
+  margin-right: auto;
+  -webkit-app-region: no-drag;
+  border-radius: 4px;
+  transition: background 0.2s;
+  z-index: 150;
+  position: relative;
+  cursor: pointer;
+  order: 9999;
+  pointer-events: auto !important;
 }
 
 #new-tab:hover {
-  background: #0d47a1;
+  background: rgba(0,0,0,0.08);
+}
+
+#new-tab:active {
+  background: rgba(0,0,0,0.15);
+  transform: scale(0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  #new-tab:hover { background: rgba(255,255,255,0.1); }
+  #new-tab:active { background: rgba(255,255,255,0.2); }
 }
 
 .tabs-bar {
@@ -171,6 +206,9 @@ button:hover {
   min-height: 48px;
   border-bottom: 1px solid var(--outline);
   z-index: 100;
+  position: relative;
+  margin-top: 0;
+  -webkit-app-region: drag;
 }
 
 .tabs-bar::-webkit-scrollbar { height: 0; }
@@ -194,6 +232,8 @@ button:hover {
   cursor: grab;
   touch-action: pan-x;
   -webkit-app-region: no-drag;
+  order: 1;
+  z-index: 150;
 }
 
 .tab:active {

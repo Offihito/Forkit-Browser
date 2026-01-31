@@ -23,6 +23,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   initNavigation(createTab);
   initDownloadManager();
   
+  // New Tab button - after initNavigation to prevent override
+  let isCreatingTab = false;
+  const newTabBtn = document.getElementById("new-tab");
+  if (newTabBtn) {
+    // Remove any existing listeners first
+    const oldBtn = newTabBtn.cloneNode(true);
+    newTabBtn.parentNode.replaceChild(oldBtn, newTabBtn);
+    
+    oldBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (isCreatingTab) return;
+      isCreatingTab = true;
+      
+      console.log("New tab clicked");
+      createTab('newtab.html');
+      
+      setTimeout(() => {
+        isCreatingTab = false;
+      }, 300);
+    });
+  }
+  
   // Initialize Ad Blocker UI (optional - only if module exists)
   try {
     const { initAdBlockerUI } = await import("./adBlocker/adBlockerUI.js");

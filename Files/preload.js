@@ -67,4 +67,7 @@ contextBridge.exposeInMainWorld("windowAPI", {
   ping: () => ipcRenderer.send('preload-ping'),
 });
 
+// YouTube Ad Blocker enjeksiyon artık main.js'de doğrudan yapılıyor
+// (app.on('web-contents-created') ile) — burada hiçbir şey gerekli değil.
+
 console.log("Preload loaded successfully with enhanced security.");

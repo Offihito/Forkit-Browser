@@ -207,6 +207,52 @@ function createWindow() {
   }
 }
 
+// ============================================================
+// YouTube Ad Blocker — Doğrudan webview inject (main process)
+// ============================================================
+// Tüm webContents'i track et — webview oluştuğunda otomatik dinle
+app.on('web-contents-created', (event, webContents) => {
+  // Sadece webview type'ları dinle (BrowserWindow veya BrowserView değil)
+  if (webContents.getType() !== 'webview') return;
+
+  let injectDebounceTimer = null;
+
+  const injectScript = () => {
+    const url = webContents.getURL();
+    if (!url) return;
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) return;
+    if (webContents.isDestroyed()) return;
+
+    // Debounce: ardışık tetikleme 400ms içinde birleştir
+    if (injectDebounceTimer) {
+      clearTimeout(injectDebounceTimer);
+    }
+    injectDebounceTimer = setTimeout(() => {
+      injectDebounceTimer = null;
+      if (webContents.isDestroyed()) return;
+
+      const script = adBlocker.getYouTubeContentScript();
+      webContents.executeJavaScript(script)
+        .then(() => console.log('✅ [main] YouTube ad script injected:', webContents.getURL().substring(0, 80)))
+        .catch(err => console.error('❌ [main] Inject failed:', err.message));
+    }, 400);
+  };
+
+  // dom-ready: sayfa ilk yüklendiğinde
+  webContents.on('dom-ready', injectScript);
+
+  // did-navigate: tam sayfa navigasyonu
+  webContents.on('did-navigate', injectScript);
+
+  // did-navigate-in-page: YouTube SPA navigasyonu (pushState) — BU KRITIK
+  webContents.on('did-navigate-in-page', injectScript);
+
+  // frame-navigated: iframe navigasyonları
+  webContents.on('frame-navigated', (details) => {
+    if (details.isMainFrame) injectScript();
+  });
+});
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
 

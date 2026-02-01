@@ -1,4 +1,4 @@
-// adBlocker.js - Ad Blocking System
+// adBlocker.js - Ad Blocking System with Enhanced YouTube Support
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -155,18 +155,67 @@ class AdBlocker {
     if (!this.isEnabled) return false;
 
     // YouTube için özel kurallar - kritik kaynakları engelleme
+    // NOT: googlevideo.com/videoplayback burada intentionally whitelist'te DEĞİL.
+    // YouTube reklamları da aynı domain/path kullanır. Sadece network-level
+    // block (youtubeAdPatterns) + content-script ile yönetilir.
     const youtubeWhitelist = [
-      'youtube.com/api/',
-      'youtube.com/youtubei/',
-      'youtube.com/s/player/',
-      'youtube.com/iframe_api',
-      'youtube.com/get_video_info',
-      'googlevideo.com',
-      'ytimg.com',
-      'ggpht.com',
-      'gstatic.com'
+      'youtube.com/api/timedtext',       // Altyazılar
+      'youtube.com/youtubei/v1/player',  // Player API (ad olmayan)
+      'youtube.com/s/player/',           // Player JS bundle
+      'youtube.com/iframe_api',          // Embed API
+      'ytimg.com',                       // Thumbnails
+      'ggpht.com',                       // Channel avatars
+      'gstatic.com/youtube',             // Static assets
+      'youtube.com/youtubei/v1/browse',  // Browse API (ana sayfa/kanal)
+      'youtube.com/youtubei/v1/search',  // Arama API
+      'youtube.com/youtubei/v1/get_video_details', // Video details
+      'googlevideo.com/videoplayback'    // Actual video stream
     ];
     
+    // YouTube reklam isteklerini engelle (en yüksek öncelik)
+    const youtubeAdPatterns = [
+      // --- Ad networks (domain-level — her zaman engelle) ---
+      'doubleclick.net',
+      'googlesyndication.com',
+      'googleadservices.com',
+      'googleads.g.doubleclick.net',
+      'static.doubleclick.net',
+      'advertising.youtube.com',
+      'ads.google.com',
+      'ad.youtube.com',
+      'adservice.google.com',
+      'r.googleyoutube.com',
+      'tracking.google.com',
+      'cm.smartadserver.com',
+      'tds.gumgum.com',
+      // --- YouTube ad-specific endpoints ---
+      'youtube.com/pagead/',
+      'google.com/pagead/',
+      'youtube.com/api/stats/ads',
+      'youtube.com/api/stats/atr',
+      'youtube.com/get_midroll_',
+      'youtube.com/youtubei/v1/log_event',
+      'youtube.com/csi_204',
+      // --- Ad serving API endpoints ---
+      'youtubei/v1/player/ad_unit',
+      'youtube.com/youtubei/v1/browse?includeAdData',
+      // --- Ad config ---
+      '/adtag/',
+      '/ad_tag/',
+      'googleplacementinterstitial'
+    ];
+    
+    // ÖNCE: YouTube ad patterns kontrol (yüksek öncelik — whitelist'ten önce)
+    for (const pattern of youtubeAdPatterns) {
+      if (url.includes(pattern)) {
+        this.stats.blocked++;
+        this.saveStats();
+        console.log('🎯 YouTube ad blocked:', url.substring(0, 100));
+        return true;
+      }
+    }
+
+    // SONRA: YouTube whitelist kontrol
     for (const domain of youtubeWhitelist) {
       if (url.includes(domain)) {
         return false;
@@ -215,30 +264,381 @@ class AdBlocker {
         return true;
       }
     }
-    
-    // YouTube reklam patternleri
-    const youtubeAdPatterns = [
-      '/pagead/',
-      '/ptracking',
-      'doubleclick.net',
-      'googlesyndication.com',
-      'youtube.com/api/stats/ads',
-      'youtube.com/pagead/',
-      'youtube.com/ptracking',
-      'youtube.com/get_midroll_'
-    ];
-    
-    if (url.includes('youtube.com') || url.includes('googlevideo.com')) {
-      for (const pattern of youtubeAdPatterns) {
-        if (url.includes(pattern)) {
-          this.stats.blocked++;
-          this.saveStats();
-          return true;
-        }
-      }
-    }
 
     return false;
+  }
+
+  // YouTube player için content script - reklamları otomatik atla
+  getYouTubeContentScript() {
+    return `
+      (function() {
+        // Daha önce yüklenip yüklenmediğini kontrol et
+        if (window.__ytAdBlockerLoaded) return;
+        window.__ytAdBlockerLoaded = true;
+
+        console.log('🎬 YouTube Ad Blocker Script Loaded (v2)');
+
+        // ============================================================
+        // 1. CSS: Reklam elementlerini derhal gizle
+        // ============================================================
+        (function injectCSS() {
+          if (document.getElementById('__yt_adb_style')) return;
+          const style = document.createElement('style');
+          style.id = '__yt_adb_style';
+          style.textContent = \`
+            /* In-stream overlay reklamları */
+            .video-ads,
+            .ytp-ad-player-overlay,
+            .ytp-ad-overlay-container,
+            .ytp-ad-text-overlay,
+            .ytp-ad-image-overlay,
+            .ytp-ad-overlay-close-button,
+            .ytp-ad-info-list,
+            .ytp-ad-info,
+            .ytp-ad-skip-button,
+            .ytp-ad-skip-button-modern,
+            .ytp-skip-ad-button,
+            .ytp-ad-upcoming-ad,
+            .ytp-ad-countdown-timer,
+            .ytp-ad-player-overlay-top,
+            .ytp-ad-player-overlay-bottom,
+            .ytp-ad-player-overlay-brand-icon,
+            .ytp-ad-player-overlay-ad-badge,
+            .ytp-ad-player-overlay-redirect-button,
+            .ytp-ad-player-overlay-close-button {
+              display: none !important;
+              visibility: hidden !important;
+              opacity: 0 !important;
+              pointer-events: none !important;
+            }
+            /* Feed reklamları */
+            ytd-display-ad-renderer,
+            ytd-promoted-sparkles-web-renderer,
+            ytd-in-feed-ad-layout-renderer,
+            ytd-ad-slot-renderer,
+            yt-mealbar-promo-renderer,
+            #masthead-ad,
+            .ytd-merch-shelf-renderer,
+            ytd-statement-banner-renderer,
+            ytd-video-masthead-ad-v3-renderer,
+            ytd-search-pydata-renderer .ytp-ad-player-overlay {
+              display: none !important;
+              visibility: hidden !important;
+              height: 0 !important;
+              min-height: 0 !important;
+            }
+          \`;
+          document.head.appendChild(style);
+          console.log('🎨 CSS enjekte edildi');
+        })();
+
+        // ============================================================
+        // 2. Reklamları tespit & atla
+        // ============================================================
+        let skipCooldown = 0; // Ardışık skip spamini önle
+
+        // Reklam video elementini bul (ana video değil)
+
+        // Ad state tracking — reklam bitince temizlenecek
+        let adState = {
+          active: false,
+          spamInterval: null,
+          originalPlaybackRate: 1
+        };
+
+        function cleanupAdState() {
+          if (!adState.active) return;
+          const video = document.querySelector('video');
+          if (video) {
+            video.playbackRate = adState.originalPlaybackRate;
+            video.muted = adState.originalMuted || false;
+          }
+          if (adState.spamInterval) {
+            clearInterval(adState.spamInterval);
+            adState.spamInterval = null;
+          }
+          adState.active = false;
+          console.log('🧹 Ad state cleaned up, main video restored');
+        }
+
+        // Element fiilen görünür mü kontrol — CSS display:none gizlenmiş olanları filtre eder
+        function isVisible(el) {
+          if (!el) return false;
+          // offsetParent === null → element veya atası display:none
+          // Exception: <body> ve position:fixed elementler her zaman offsetParent=null olabilir
+          if (el.offsetParent === null && el.tagName !== 'BODY') {
+            const style = getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+          }
+          return true;
+        }
+
+        function isAdPlaying() {
+          // A: Bilinen reklam class'ları — sadece GÖRÜNÜR olanlar
+          const adShowingEl = document.querySelector('.ad-showing');
+          if (adShowingEl && isVisible(adShowingEl)) return true;
+
+          // B: Ad overlay elementleri — CSS ile gizlenmiş olanları atla
+          const overlaySelectors = [
+            '.ytp-ad-player-overlay',
+            '.ytp-ad-player-overlay-container',
+            '.ytp-ad-text-overlay',
+            '.ytp-ad-info',
+            '.ytp-ad-player-overlay-brand-icon'
+          ];
+          for (const sel of overlaySelectors) {
+            const el = document.querySelector(sel);
+            if (el && isVisible(el)) return true;
+          }
+
+          // C: Sponsorlu label — sadece #player scope'unda ve görünür
+          const playerEl = document.querySelector('#player, .ytp-player-container');
+          if (playerEl) {
+            const adLabel = playerEl.querySelector('.ytp-ad-label');
+            if (adLabel && isVisible(adLabel)) return true;
+          }
+
+          return false;
+        }
+
+        function clickSkipButton() {
+          const selectors = [
+            'button.ytp-ad-skip-button',
+            '.ytp-ad-skip-button',
+            '.ytp-ad-skip-button-modern',
+            '.ytp-skip-ad-button',
+            'button[data-testid="skip-button"]',
+            '.videoAdUiSkipButton',
+            '.ytp-skip-ad-button button',
+            'button[aria-label*="skip"], button[aria-label*="Skip"]',
+            'button[aria-label*="atlı"], button[aria-label*="Atlı"]'
+          ];
+          for (const sel of selectors) {
+            const btn = document.querySelector(sel);
+            if (btn && btn.offsetParent !== null) {
+              console.log('⏭️  Skip button found:', sel);
+              btn.click();
+              return true;
+            }
+          }
+          return false;
+        }
+
+        function forceSkipAd() {
+          if (adState.active) return;
+
+          const video = document.querySelector('video');
+          if (!video) return;
+
+          adState.active = true;
+          adState.originalPlaybackRate = video.playbackRate || 1;
+          adState.originalMuted = video.muted;
+
+          video.muted = true;
+          try { video.playbackRate = 16; } catch(e) {}
+
+          // Ad overlay'leri gizle
+          document.querySelectorAll(
+            '.video-ads, .ytp-ad-player-overlay, .ytp-ad-player-overlay-container, ' +
+            '.ytp-ad-text-overlay, .ytp-ad-image-overlay, .ytp-ad-label'
+          ).forEach(el => {
+            el.style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;';
+          });
+
+          // Polling: reklam bitince state'i restore et
+          let count = 0;
+          adState.spamInterval = setInterval(() => {
+            if (!isAdPlaying()) {
+              cleanupAdState();
+              return;
+            }
+            count++;
+            if (count > 200) { // 10s safety timeout
+              cleanupAdState();
+            }
+          }, 50);
+
+          console.log('⏩ Force skip started (mute + 16x)');
+        }
+
+        // Debug: her 3s bir kez video state'ini log
+        let debugLogCount = 0;
+        function debugLog() {
+          const video = document.querySelector('video');
+          const adSelectors = [
+            '.ad-showing',
+            '.ytp-ad-player-overlay',
+            '.ytp-ad-player-overlay-container',
+            '.ytp-ad-text-overlay',
+            '.ytp-ad-label',
+            '[class*="ytp-ad-"]'
+          ];
+          const foundAds = adSelectors.filter(s => document.querySelector(s)).join(', ');
+          if (video) {
+            console.log(
+              '[YT-ADB DEBUG]',
+              'dur=' + (video.duration || 0).toFixed(1) + 's',
+              'cur=' + (video.currentTime || 0).toFixed(1) + 's',
+              'rate=' + video.playbackRate,
+              'muted=' + video.muted,
+              'paused=' + video.paused,
+              'adState.active=' + adState.active,
+              'adElements=[' + foundAds + ']'
+            );
+          }
+        }
+        setInterval(() => { debugLog(); }, 3000);
+
+        function handleAd() {
+          const now = Date.now();
+          if (now < skipCooldown) return;
+
+          // Ad yok ama state hala aktif mi? → temizle
+          if (!isAdPlaying()) {
+            if (adState.active) cleanupAdState();
+            return;
+          }
+
+          console.log('🚫 Ad detected!');
+
+          if (clickSkipButton()) {
+            console.log('✅ Skipped via button');
+            cleanupAdState();
+            skipCooldown = now + 2000;
+            return;
+          }
+
+          forceSkipAd();
+          skipCooldown = now + 800;
+        }
+
+
+        // ============================================================
+        // 3. MutationObserver — DOM değişikliklerinde anında kontrol
+        // ============================================================
+        (function startObserver() {
+          const observer = new MutationObserver((mutations) => {
+            // Sadece ilgili mutation'lar için kontrol et
+            for (const m of mutations) {
+              // Yeni node eklendi mi?
+              if (m.addedNodes.length > 0) {
+                handleAd();
+                return;
+              }
+              // Class veya style attribute değişti mi?
+              if (m.type === 'attributes') {
+                const target = m.target;
+                if (target && target.className && typeof target.className === 'string') {
+                  if (target.className.includes('ad-') || target.className.includes('ytp-ad')) {
+                    handleAd();
+                    return;
+                  }
+                }
+              }
+            }
+          });
+
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+          });
+          console.log('👀 MutationObserver başlatıldı');
+        })();
+
+        // ============================================================
+        // 4. Ana video length'ini kaydet + Interval
+        setInterval(handleAd, 300);
+
+        // ============================================================
+        // 5. fetch / XMLHttpRequest intercept — YouTube ad config yanıtlarını engelle
+        // Bu, YouTube'un /youtubei/v1/player veya /next endpoint'inden
+        // dönen "ad" bilgilerini yakalar.
+        // ============================================================
+        (function interceptFetch() {
+          const originalFetch = window.fetch;
+          window.fetch = function(...args) {
+            const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+
+            // Tamamen engel: ad network domains
+            if (url.includes('/pagead/') ||
+                url.includes('doubleclick') ||
+                url.includes('googleadservices') ||
+                url.includes('adservice.google')) {
+              return Promise.resolve(new Response('{}'));
+            }
+
+            // /youtubei/v1/player — response'dan ad payload'ı temizle
+            if (url.includes('youtubei/v1/player')) {
+              return originalFetch.apply(this, args).then(response => {
+                if (!response.ok) return response;
+                return response.text().then(text => {
+                  try {
+                    const data = JSON.parse(text);
+                    // Ad payload'ları temizle
+                    if (data.streamingData && data.streamingData.adSupportedFormats) {
+                      delete data.streamingData.adSupportedFormats;
+                    }
+                    if (data.videoDetails && data.videoDetails.isAd) {
+                      data.videoDetails.isAd = false;
+                    }
+                    // adRenderer'ları ara ve sil
+                    const cleaned = JSON.stringify(data)
+                      .replace(/"adRenderer":\{[^}]*\}/g, '')
+                      .replace(/"adPods":\[[^\]]*\]/g, '"adPods":[]')
+                      .replace(/"adUnit":\{[^}]*\}/g, '');
+                    return new Response(cleaned, {
+                      status: response.status,
+                      headers: { 'Content-Type': 'application/json' }
+                    });
+                  } catch(e) {
+                    // JSON parse fail → orijinal response döndür
+                    return new Response(text, {
+                      status: response.status,
+                      headers: response.headers
+                    });
+                  }
+                });
+              });
+            }
+
+            return originalFetch.apply(this, args);
+          };
+        })();
+
+        (function interceptXHR() {
+          const originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function(method, url) {
+            if (typeof url === 'string') {
+              if (url.includes('/pagead/') ||
+                  url.includes('doubleclick') ||
+                  url.includes('googleadservices') ||
+                  url.includes('adservice.google')) {
+                // Bu isteği silent olarak "boş" yap
+                this.__blocked = true;
+              }
+            }
+            return originalOpen.apply(this, arguments);
+          };
+
+          const originalSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send = function() {
+            if (this.__blocked) {
+              console.log('🚫 XHR blocked');
+              this.readyState = 4;
+              this.status = 200;
+              this.responseText = '{}';
+              if (typeof this.onload === 'function') this.onload();
+              return;
+            }
+            return originalSend.apply(this, arguments);
+          };
+        })();
+
+        console.log('✅ YouTube Ad Blocker v2 hazır!');
+      })();
+    `;
   }
 
   // Cosmetic filtreleri al (element hiding için)

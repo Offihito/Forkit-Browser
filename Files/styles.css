@@ -209,6 +209,7 @@ button:hover {
   position: relative;
   margin-top: 0;
   -webkit-app-region: drag;
+  overflow-y: hidden;
 }
 
 .tabs-bar::-webkit-scrollbar { height: 0; }

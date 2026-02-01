@@ -11,10 +11,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // diagnostic ping
   window.windowAPI?.ping();
 
-  // Titlebar button behaviors (safe checks)
-  document.getElementById("min-btn").onclick = () => window.windowAPI?.minimize();
-  document.getElementById("max-btn").onclick = () => window.windowAPI?.maximize();
-  document.getElementById("close-btn").onclick = () => window.windowAPI?.close();
+  // Titlebar button behaviors - get buttons from the main title bar (not from modals)
+  const titleBar = document.querySelector('#title-bar');
+  if (titleBar) {
+    const minBtn = titleBar.querySelector("#min-btn");
+    const maxBtn = titleBar.querySelector("#max-btn");
+    const closeBtn = titleBar.querySelector("#close-btn");
+    
+    if (minBtn) minBtn.onclick = () => window.windowAPI?.minimize();
+    if (maxBtn) maxBtn.onclick = () => window.windowAPI?.maximize();
+    if (closeBtn) closeBtn.onclick = () => window.windowAPI?.close();
+  }
 
   // Load history on app startup
   loadGlobalHistory();

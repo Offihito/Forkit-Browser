@@ -55,7 +55,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  z-index: 200;
+  z-index: 10001;
   pointer-events: none;
 }
 
@@ -404,7 +404,10 @@ webview.active {
 
 #history-page {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--surface);
   z-index: 9999;
   display: none;

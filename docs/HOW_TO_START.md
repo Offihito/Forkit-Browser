@@ -1,6 +1,6 @@
 ## This document shows how to run this project locally.
 - Make sure Node.js is installed on your system.
-- Install nw.js.
+- Install electron.
 - Run npm start command.
 - If the application does not start correctly, it is likely that some dependencies are missing or incompatible.
 Please review the package.json file and ensure that all required dependencies and devDependencies are properly installed.

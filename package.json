@@ -1,6 +1,6 @@
 {
   "name": "forkit",
-  "version": "1.3.5",
+  "version": "1.3.0",
   "description": "Open Source Browser Based on Chromium",
   "main": "main.js",
   "homepage": "./",
@@ -26,7 +26,7 @@
   "build": {
     "appId": "com.offihito.forkit",
     "productName": "Forkit",
-    "copyright": "Copyright © 2025 Offihito",
+    "copyright": "Copyright Â© 2025 Offihito",
     "directories": {
       "output": "dist"
     },
@@ -89,6 +89,7 @@
   "devDependencies": {
     "electron": "^39.3.0",
     "electron-builder": "^26.0.12",
+    "electron-to-nwjs": "^1.14.3",
     "nw": "^0.107.0"
   },
   "dependencies": {

@@ -6,6 +6,132 @@ import { updateHistoryDropdown } from "../ui/historyUI.js";
 import { saveTabHistory, saveGlobalHistory } from "../history/globalHistory.js";
 import { userAgent } from "../env/userAgent.js";
 
+// ── Content script that monitors title & favicon changes inside a webview ──
+// NW.js/Chrome webview does NOT support Electron events like
+// "page-title-updated" or "page-favicon-updated". Instead we inject a tiny
+// MutationObserver that watches <title> and <link rel="icon"> and reports
+// changes back via console.log with a known prefix. The host page picks
+// these up from the "consolemessage" event.
+const TITLE_FAVICON_MONITOR_SCRIPT = `
+(function() {
+  if (window.__forkitTitleMon) return;
+  window.__forkitTitleMon = true;
+
+  var lastTitle = '';
+  var lastFavicon = '';
+
+  function getTitle() {
+    return document.title || '';
+  }
+
+  function getFavicon() {
+    var link = document.querySelector('link[rel="icon"], link[rel="shortcut icon"], link[rel*="icon"]');
+    return link ? link.href : '';
+  }
+
+  function report() {
+    var t = getTitle();
+    var f = getFavicon();
+    if (t && t !== lastTitle) {
+      lastTitle = t;
+      console.log('__FORKIT_TITLE__:' + t);
+    }
+    if (f && f !== lastFavicon) {
+      lastFavicon = f;
+      console.log('__FORKIT_FAVICON__:' + f);
+    }
+  }
+
+  // Report immediately
+  report();
+
+  // Observe <head> for changes to <title> and <link> elements
+  var head = document.head || document.documentElement;
+  if (head) {
+    new MutationObserver(function() { report(); }).observe(head, {
+      childList: true, subtree: true, characterData: true, attributes: true
+    });
+  }
+
+  // Also poll a few times to catch late-set titles (SPAs, JS-rendered pages)
+  setTimeout(report, 500);
+  setTimeout(report, 1500);
+  setTimeout(report, 3000);
+  setTimeout(report, 6000);
+})();
+`;
+
+/**
+ * Actively fetch title and favicon from a webview via executeScript.
+ * This is the reliable fallback since Chrome webview events don't exist.
+ */
+function fetchTitleAndFavicon(webview, callback) {
+  const code = `
+    (function() {
+      var fav = '';
+      var link = document.querySelector('link[rel="icon"], link[rel="shortcut icon"], link[rel*="icon"]');
+      if (link) fav = link.href;
+      return { title: document.title || '', favicon: fav };
+    })()
+  `;
+  try {
+    if (typeof webview.executeScript === 'function') {
+      webview.executeScript({ code }, (results) => {
+        if (chrome?.runtime?.lastError) { callback('', ''); return; }
+        const r = Array.isArray(results) ? results[0] : results;
+        callback(r?.title || '', r?.favicon || '');
+      });
+    } else if (typeof webview.executeJavaScript === 'function') {
+      webview.executeJavaScript(code)
+        .then(r => callback(r?.title || '', r?.favicon || ''))
+        .catch(() => callback('', ''));
+    } else {
+      callback('', '');
+    }
+  } catch (e) {
+    callback('', '');
+  }
+}
+
+/**
+ * Inject the title/favicon monitor script into a webview.
+ */
+function injectTitleMonitor(webview) {
+  try {
+    if (typeof webview.executeScript === 'function') {
+      webview.executeScript({ code: TITLE_FAVICON_MONITOR_SCRIPT }, () => {});
+    } else if (typeof webview.executeJavaScript === 'function') {
+      webview.executeJavaScript(TITLE_FAVICON_MONITOR_SCRIPT).catch(() => {});
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/**
+ * Wire up consolemessage listener on a webview to receive title/favicon
+ * updates reported by the injected monitor script.
+ */
+function setupTitleFaviconConsoleListener(webview, tab, updateFaviconFn) {
+  webview.addEventListener('consolemessage', (e) => {
+    if (!e.message) return;
+    if (e.message.startsWith('__FORKIT_TITLE__:')) {
+      const title = e.message.substring('__FORKIT_TITLE__:'.length);
+      if (title) {
+        webview.__lastTitle = title;
+        updateTabTitle(tab, title);
+        if (tab.history[tab.historyIndex]) {
+          tab.history[tab.historyIndex].title = title;
+          saveTabHistory(tab);
+        }
+      }
+    } else if (e.message.startsWith('__FORKIT_FAVICON__:')) {
+      const favicon = e.message.substring('__FORKIT_FAVICON__:'.length);
+      if (favicon && updateFaviconFn) {
+        updateFaviconFn(favicon);
+      }
+    }
+  });
+}
+
 /**
  * Replaces an iframe-based tab with a proper <webview> so it can navigate to
  * external (http/https) URLs. Called when the user clicks a quick-link, uses
@@ -81,9 +207,27 @@ function upgradeIframeToWebview(tab, targetUrl) {
     eventNames.forEach((eventName) => webview.addEventListener(eventName, handler));
   };
 
+  const updateFavicon = (faviconUrl) => {
+    const img = tab.tabElement.querySelector('.tab-favicon');
+    if (faviconUrl) {
+      if (img) img.src = faviconUrl;
+    } else {
+      const current = webview.getURL();
+      try {
+        const u = new URL(current);
+        if ((u.protocol === "http:" || u.protocol === "https:") && u.hostname) {
+          if (img) img.src = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
+        }
+      } catch { /* ignore */ }
+    }
+    if (tab.history[tab.historyIndex]) {
+      tab.history[tab.historyIndex].favicon = img?.src || '';
+    }
+    saveTabHistory(tab);
+  };
+
   onAny(["did-start-loading", "loadstart"], () => {
     tab.isLoading = true;
-    updateTabTitle(tab, "Loading...");
   });
 
   const handleLoadedPage = (currentUrl, title) => {
@@ -130,34 +274,47 @@ function upgradeIframeToWebview(tab, targetUrl) {
         updateHistoryDropdown();
       }
       updateTabTitle(tab, t);
-      // Update favicon
-      const img = tab.tabElement.querySelector('.tab-favicon');
-      if (img) {
-        try {
-          const u = new URL(currentUrl);
-          if (u.protocol === "http:" || u.protocol === "https:") {
-            img.src = `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
-          }
-        } catch { /* ignore */ }
-      }
+      updateFavicon();
       saveTabHistory(tab);
     }, 100);
   };
 
   onAny(["did-finish-load", "loadstop"], () => {
     tab.isLoading = false;
+    // Inject title/favicon monitor for ongoing changes
+    injectTitleMonitor(webview);
+    // Actively fetch title and favicon since Chrome webview doesn't have
+    // page-title-updated / page-favicon-updated events
     const currentUrl = webview.getURL();
-    const title = webview.getTitle() || webview.__lastTitle || "Untitled page";
-    handleLoadedPage(currentUrl, title);
+    fetchTitleAndFavicon(webview, (fetchedTitle, fetchedFavicon) => {
+      const title = fetchedTitle || webview.__lastTitle || "Untitled page";
+      webview.__lastTitle = title;
+      handleLoadedPage(currentUrl, title);
+      if (fetchedFavicon) {
+        updateFavicon(fetchedFavicon);
+      }
+    });
   });
 
-  onAny(["did-fail-load", "loadabort"], () => {
+  // loadabort: only show "Loading Failed" for top-level frame aborts
+  webview.addEventListener("loadabort", (e) => {
+    if (e.isTopLevel === false) return; // sub-resource abort, ignore
+    tab.isLoading = false;
+    if (tab === state.activeTab) {
+      updateTabTitle(tab, "Loading Failed");
+    }
+  });
+  webview.addEventListener("did-fail-load", () => {
     tab.isLoading = false;
     if (tab === state.activeTab) {
       updateTabTitle(tab, "Loading Failed");
     }
   });
 
+  // Wire up consolemessage listener for title/favicon updates from injected monitor
+  setupTitleFaviconConsoleListener(webview, tab, updateFavicon);
+
+  // Also try Electron events as fallback (in case running under Electron)
   webview.addEventListener("page-title-updated", (event) => {
     const title = event.title || "Untitled Page";
     webview.__lastTitle = title;
@@ -170,12 +327,7 @@ function upgradeIframeToWebview(tab, targetUrl) {
 
   webview.addEventListener("page-favicon-updated", (event) => {
     if (event.favicons && event.favicons.length > 0) {
-      const img = tab.tabElement.querySelector('.tab-favicon');
-      if (img) img.src = event.favicons[0];
-      if (tab.history[tab.historyIndex]) {
-        tab.history[tab.historyIndex].favicon = event.favicons[0];
-      }
-      saveTabHistory(tab);
+      updateFavicon(event.favicons[0]);
     }
   });
 
@@ -536,23 +688,44 @@ export function createTab(url = "newtab.html") {
 
     onAny(["did-start-loading", "loadstart"], () => {
       tab.isLoading = true;
-      updateTabTitle(tab, "Loading...");
     });
 
     onAny(["did-finish-load", "loadstop"], () => {
       tab.isLoading = false;
+      // Inject title/favicon monitor for ongoing changes
+      injectTitleMonitor(webview);
+      // Actively fetch title and favicon since Chrome webview doesn't have
+      // page-title-updated / page-favicon-updated events
       const currentUrl = webview.getURL();
-      const title = webview.getTitle() || webview.__lastTitle || "Untitled page";
-      handleLoadedPage(currentUrl, title);
+      fetchTitleAndFavicon(webview, (fetchedTitle, fetchedFavicon) => {
+        const title = fetchedTitle || webview.__lastTitle || "Untitled page";
+        webview.__lastTitle = title;
+        handleLoadedPage(currentUrl, title);
+        if (fetchedFavicon) {
+          updateFavicon(fetchedFavicon);
+        }
+      });
     });
 
-    onAny(["did-fail-load", "loadabort"], () => {
+    // loadabort: only show "Loading Failed" for top-level frame aborts
+    webview.addEventListener("loadabort", (e) => {
+      if (e.isTopLevel === false) return; // sub-resource abort, ignore
+      tab.isLoading = false;
+      if (tab === state.activeTab) {
+        updateTabTitle(tab, "Loading Failed");
+      }
+    });
+    webview.addEventListener("did-fail-load", () => {
       tab.isLoading = false;
       if (tab === state.activeTab) {
         updateTabTitle(tab, "Loading Failed");
       }
     });
 
+    // Wire up consolemessage listener for title/favicon updates from injected monitor
+    setupTitleFaviconConsoleListener(webview, tab, updateFavicon);
+
+    // Also try Electron events as fallback (in case running under Electron)
     webview.addEventListener("page-title-updated", (event) => {
       const title = event.title || "Untitled Page";
       webview.__lastTitle = title;

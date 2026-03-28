@@ -52,6 +52,17 @@ export function navigateTo(url) {
     dom.addressInput.value = '';
     return;
   }
+
+  // NW.js: open bundled pages under Files/ (e.g. newtab.html) — must run before "https://" heuristics
+  const trimmed = url.trim();
+  const localFileUrl = window.windowAPI?.resolveLocalAppPageUrl?.(trimmed);
+  if (localFileUrl) {
+    state.activeTab.isNavigating = false;
+    state.activeTab.webview.loadURL(localFileUrl);
+    dom.addressInput.value = window.windowAPI?.fileUrlToDisplayPath?.(localFileUrl) || trimmed;
+    dom.historyDropdown.style.display = 'none';
+    return;
+  }
   
   state.activeTab.isNavigating = false;
   

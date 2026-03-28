@@ -6,7 +6,7 @@
   --primary-container: #d2e3fc;
   --on-primary-container: #001d66;
   --outline: #dadce0;
-  --tab-bg: rgba(255,255,255,0.85);
+  --tab-bg: rgba(255, 255, 255, 0.85);
   --tab-inactive: #5f6368;
   --error: #d93025;
 }
@@ -20,13 +20,18 @@
     --primary-container: #1a3e72;
     --on-primary-container: #d0e2ff;
     --outline: #303134;
-    --tab-bg: rgba(45,45,45,0.9);
+    --tab-bg: rgba(45, 45, 45, 0.9);
     --tab-inactive: #9aa0a6;
     --error: #e81123;
   }
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
   height: 100vh;
@@ -36,6 +41,7 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 /*Titlebar and window*/
 .titlebar {
   position: absolute;
@@ -59,7 +65,7 @@ body {
   pointer-events: none;
 }
 
-#title-bar > * {
+#title-bar>* {
   pointer-events: auto;
 }
 
@@ -89,14 +95,18 @@ body {
   border-radius: 4px;
   transition: all 0.2s ease;
 }
+
 #min-btn::before {
   content: "";
   display: block;
-  width: 10px;       /* dash uzunluğu */
-  height: 2px;       /* dash kalınlığı */
+  width: 10px;
+  /* dash uzunluğu */
+  height: 2px;
+  /* dash kalınlığı */
   background: white;
   margin: auto;
 }
+
 #close-btn:hover {
   background: var(--error);
 }
@@ -104,6 +114,7 @@ body {
 .window-controls button:hover {
   background: #333;
 }
+
 /*Titlebar and window*/
 
 .toolbar {
@@ -133,11 +144,13 @@ button {
 }
 
 button:hover {
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
-  button:hover { background: rgba(255,255,255,0.1); }
+  button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 }
 
 #address {
@@ -158,7 +171,7 @@ button:hover {
 
 #address:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
 #new-tab {
@@ -183,17 +196,22 @@ button:hover {
 }
 
 #new-tab:hover {
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 #new-tab:active {
-  background: rgba(0,0,0,0.15);
+  background: rgba(0, 0, 0, 0.15);
   transform: scale(0.95);
 }
 
 @media (prefers-color-scheme: dark) {
-  #new-tab:hover { background: rgba(255,255,255,0.1); }
-  #new-tab:active { background: rgba(255,255,255,0.2); }
+  #new-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  #new-tab:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 
 .tabs-bar {
@@ -212,7 +230,9 @@ button:hover {
   overflow-y: hidden;
 }
 
-.tabs-bar::-webkit-scrollbar { height: 0; }
+.tabs-bar::-webkit-scrollbar {
+  height: 0;
+}
 
 .tab {
   background: transparent;
@@ -242,17 +262,19 @@ button:hover {
 }
 
 .tab:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab:hover { background: rgba(255,255,255,0.08); }
+  .tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .tab.active {
   background: var(--tab-bg);
   color: var(--on-surface);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(20px);
   opacity: 0.8;
   -webkit-app-region: no-drag;
@@ -275,12 +297,12 @@ button:hover {
   background: var(--primary-container) !important;
   color: var(--on-primary-container);
   transform: rotate(4deg);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 .tab.drag-over {
   border-left: 3px solid var(--primary);
-  background: rgba(26,115,232,0.15);
+  background: rgba(26, 115, 232, 0.15);
 }
 
 .tab-favicon {
@@ -315,12 +337,14 @@ button:hover {
 }
 
 .tab-close:hover {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   opacity: 1 !important;
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab-close:hover { background: rgba(255,255,255,0.15); }
+  .tab-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
 
 #webview-container {
@@ -330,12 +354,15 @@ button:hover {
 }
 
 @media (prefers-color-scheme: dark) {
-  #webview-container { background: #000; }
+  #webview-container {
+    background: #000;
+  }
 }
 
-webview {
+.webview {
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border: none;
@@ -344,7 +371,7 @@ webview {
   transition: opacity 0.3s ease;
 }
 
-webview.active {
+.webview.active {
   visibility: visible;
   opacity: 1;
   z-index: 1;
@@ -366,7 +393,7 @@ webview.active {
   border-radius: 0 0 16px 16px;
   max-height: 320px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   display: none;
 }
@@ -381,7 +408,7 @@ webview.active {
 }
 
 .history-item:hover {
-  background: rgba(26,115,232,0.1);
+  background: rgba(26, 115, 232, 0.1);
 }
 
 .history-item img {
@@ -450,7 +477,7 @@ webview.active {
 }
 
 #history-close:hover {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 #clear-history-btn {
@@ -502,7 +529,7 @@ webview.active {
 }
 
 .history-entry:hover {
-  background: rgba(26,115,232,0.1);
+  background: rgba(26, 115, 232, 0.1);
 }
 
 .history-entry img {
@@ -533,10 +560,14 @@ webview.active {
 }
 
 /* Onay dialogu ve DPI Modal */
-#confirm-dialog, #dpi-modal {
+#confirm-dialog,
+#dpi-modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   z-index: 10000;
   display: none;
@@ -546,17 +577,23 @@ webview.active {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
-#confirm-box, #dpi-modal-box {
+#confirm-box,
+#dpi-modal-box {
   background: var(--surface);
   border-radius: 16px;
   padding: 24px;
   max-width: 400px;
   width: 90%;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease;
 }
 
@@ -565,6 +602,7 @@ webview.active {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -605,12 +643,12 @@ webview.active {
 }
 
 #dpi-modal-close:hover {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   #dpi-modal-close:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -759,8 +797,15 @@ webview.active {
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
-  50% { box-shadow: 0 0 0 8px rgba(102, 126, 234, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(102, 126, 234, 0);
+  }
 }
 
 
@@ -828,6 +873,7 @@ webview.active {
 }
 
 @media (prefers-color-scheme: dark) {
+
   .tabs-bar::-webkit-scrollbar-thumb,
   #history-dropdown::-webkit-scrollbar-thumb,
   #history-content::-webkit-scrollbar-thumb {
@@ -845,7 +891,7 @@ webview.active {
   background: var(--surface);
   border: 1px solid var(--outline);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   z-index: 9998;
   display: none;
   flex-direction: column;
@@ -911,7 +957,7 @@ webview.active {
 }
 
 .download-item:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .download-item-header {
@@ -985,4 +1031,426 @@ webview.active {
 
 .download-error .download-item-header i {
   color: var(--error);
+}
+
+/* ═══════════════════════ Ad Blocker UI ═══════════════════════ */
+
+/* Toolbar button */
+#adblock-btn {
+  background: linear-gradient(135deg, #34a853 0%, #0d904f 100%);
+  color: white;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+#adblock-btn:hover {
+  background: linear-gradient(135deg, #0d904f 0%, #34a853 100%);
+  transform: scale(1.05);
+}
+
+#adblock-btn.adblock-disabled {
+  background: var(--tab-inactive);
+  opacity: 0.6;
+}
+
+/* Badge */
+.adblock-badge {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #ea4335;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(234, 67, 53, 0.5);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.adblock-badge:empty,
+.adblock-badge[data-count="0"] {
+  transform: scale(0);
+}
+
+/* Panel */
+.adblock-panel {
+  position: fixed;
+  right: 80px;
+  top: 104px;
+  width: 360px;
+  max-height: 520px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  z-index: 9998;
+  display: none;
+  flex-direction: column;
+  backdrop-filter: blur(24px);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+
+.adblock-panel.open {
+  display: flex;
+  animation: slideDown 0.2s ease forwards;
+}
+
+/* Panel header */
+.adblock-panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--outline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(52, 168, 83, 0.08), rgba(13, 144, 79, 0.05));
+}
+
+.adblock-panel-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #34a853;
+}
+
+#adblock-panel-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--on-surface);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Panel body */
+.adblock-panel-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Toggle row */
+.adblock-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid var(--outline);
+}
+
+.adblock-toggle-label {
+  font-weight: 500;
+  font-size: 14px;
+  flex: 1;
+}
+
+.adblock-status-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.adblock-status-text.active {
+  color: #34a853;
+}
+
+.adblock-status-text.disabled {
+  color: var(--tab-inactive);
+}
+
+/* Toggle switch (iOS style) */
+.adblock-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.adblock-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.adblock-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--tab-inactive);
+  border-radius: 24px;
+  transition: 0.3s ease;
+}
+
+.adblock-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.adblock-switch input:checked + .adblock-slider {
+  background: #34a853;
+}
+
+.adblock-switch input:checked + .adblock-slider::before {
+  transform: translateX(20px);
+}
+
+/* Stats cards */
+.adblock-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.adblock-stat-card {
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--outline);
+  transition: transform 0.2s ease;
+}
+
+.adblock-stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.adblock-stat-card.blocked {
+  background: linear-gradient(135deg, rgba(234, 67, 53, 0.08), rgba(234, 67, 53, 0.03));
+}
+
+.adblock-stat-card.blocked i {
+  color: #ea4335;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.adblock-stat-card.allowed {
+  background: linear-gradient(135deg, rgba(52, 168, 83, 0.08), rgba(52, 168, 83, 0.03));
+}
+
+.adblock-stat-card.allowed i {
+  color: #34a853;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.adblock-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+  color: var(--on-surface);
+}
+
+.adblock-stat-label {
+  font-size: 11px;
+  color: var(--tab-inactive);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Action button */
+.adblock-action-btn {
+  width: 100%;
+  height: auto;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #34a853, #0d904f);
+  color: white;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.adblock-action-btn:hover {
+  background: linear-gradient(135deg, #0d904f, #34a853);
+  box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
+  transform: translateY(-1px);
+}
+
+.adblock-action-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Update status */
+.adblock-update-status {
+  font-size: 12px;
+  padding: 0 4px;
+  min-height: 0;
+  transition: all 0.2s;
+}
+
+.adblock-update-status:empty {
+  display: none;
+}
+
+.adblock-update-status.success {
+  color: #34a853;
+}
+
+.adblock-update-status.error {
+  color: var(--error);
+}
+
+/* Input groups */
+.adblock-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adblock-input-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tab-inactive);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adblock-input-group label i {
+  font-size: 12px;
+  color: var(--primary);
+}
+
+.adblock-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.adblock-input-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline);
+  background: var(--bg);
+  color: var(--on-surface);
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.adblock-input-row input:focus {
+  border-color: var(--primary);
+}
+
+.adblock-small-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.adblock-small-btn:hover {
+  background: #1565c0;
+  transform: scale(1.05);
+}
+
+/* Reset button */
+.adblock-reset-btn {
+  width: 100%;
+  height: auto;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tab-inactive);
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--outline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.adblock-reset-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--on-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  .adblock-reset-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .adblock-stat-card.blocked {
+    background: linear-gradient(135deg, rgba(234, 67, 53, 0.12), rgba(234, 67, 53, 0.05));
+  }
+
+  .adblock-stat-card.allowed {
+    background: linear-gradient(135deg, rgba(52, 168, 83, 0.12), rgba(52, 168, 83, 0.05));
+  }
+
+  .adblock-panel-header {
+    background: linear-gradient(135deg, rgba(52, 168, 83, 0.12), rgba(13, 144, 79, 0.08));
+  }
+}
+
+/* Toast notification */
+.adblock-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--on-surface);
+  color: var(--surface);
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 99999;
+}
+
+.adblock-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

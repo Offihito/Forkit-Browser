@@ -2,18 +2,15 @@
   "name": "forkit",
   "version": "1.3.0",
   "description": "Open Source Browser Based on Chromium",
-  "main": "main.js",
+  "main": "Files/index.html",
   "homepage": "./",
   "scripts": {
-    "start": "electron main.js --no-sandbox",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "start": "nw .",
+    "start:sdk": "nw --remote-debugging-port=9222 ."
   },
   "keywords": [
     "browser",
-    "electron",
+    "nwjs",
     "chromium",
     "open-source"
   ],
@@ -23,80 +20,27 @@
   },
   "license": "MIT",
   "type": "commonjs",
-  "build": {
-    "appId": "com.offihito.forkit",
-    "productName": "Forkit",
-    "copyright": "Copyright Â© 2025 Offihito",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "adBlocker.js",
-      "Files/**/*",
-      "assets/**/*",
-      "build/**/*",
-      "package.json",
-      "!node_modules/**"
-    ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "icon": "build/icon.ico"
-    },
-    "portable": {
-      "artifactName": "Forkit-${version}-portable.exe"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "perMachine": false,
-      "shortcutName": "Forkit Browser"
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "build/icon.icns",
-      "category": "public.app-category.utilities"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb",
-        "rpm",
-        "pacman",
-        "snap"
-      ],
-      "icon": "build/icon.png",
-      "category": "Network;WebBrowser",
-      "executableName": "forkit",
-      "asarUnpack": [
-        "Files/**/*"
-      ]
-    },
-    "extraResources": [],
-    "electronDownload": {
-      "mirror": "https://github.com/electron/electron/releases/download/"
-    }
+  "window": {
+    "title": "Forkit Browser",
+    "width": 1400,
+    "height": 800,
+    "frame": false,
+    "icon": "build/icon.png"
   },
+  "chromium-args": "--disable-blink-features=AutomationControlled --disable-features=IsolateOrigins,site-per-process --no-sandbox",
+  "node-remote": "<all_urls>",
+  "bg-script": "bg-script.js",
+  "permissions": [
+    "webview",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
   "devDependencies": {
-    "electron": "^39.3.0",
-    "electron-builder": "^26.0.12",
-    "electron-to-nwjs": "^1.14.3",
     "nw": "^0.107.0"
   },
   "dependencies": {
-    "@electron/remote": "^2.1.3",
-    "@getstation/electron-google-oauth2": "^14.0.0",
-    "@ghostery/adblocker-electron": "^2.13.4",
-    "cross-fetch": "^4.1.0",
-    "electron-dl": "^4.0.0"
+    "@ghostery/adblocker": "^2.14.1",
+    "@ghostery/adblocker-electron": "^2.14.1",
+    "cross-fetch": "^4.1.0"
   }
 }

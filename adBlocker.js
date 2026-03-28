@@ -17,7 +17,7 @@ class AdBlocker {
     };
     this.filterListPath = path.join(__dirname, 'Data', 'adblock-filters.txt');
     this.statsPath = path.join(__dirname, 'Data', 'adblock-stats.json');
-    
+
     this.loadFilters();
     this.loadStats();
   }
@@ -56,7 +56,7 @@ class AdBlocker {
 
     for (const list of lists) {
       if (!list.enabled) continue;
-      
+
       try {
         const filters = await this.downloadFilterList(list.url);
         allFilters = allFilters.concat(filters);
@@ -69,7 +69,7 @@ class AdBlocker {
     // Filtreleri kaydet
     this.parseFilters(allFilters);
     this.saveFilters(allFilters);
-    
+
     return {
       total: allFilters.length,
       block: this.filters.block.length,
@@ -83,7 +83,7 @@ class AdBlocker {
     return new Promise((resolve, reject) => {
       https.get(url, (res) => {
         let data = '';
-        
+
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
           const lines = data.split('\n')
@@ -105,7 +105,7 @@ class AdBlocker {
 
     for (let line of filterLines) {
       line = line.trim();
-      
+
       // Boş veya yorum satırlarını atla
       if (!line || line.startsWith('!') || line.startsWith('[')) continue;
 
@@ -171,7 +171,7 @@ class AdBlocker {
       'youtube.com/youtubei/v1/get_video_details', // Video details
       'googlevideo.com/videoplayback'    // Actual video stream
     ];
-    
+
     // YouTube reklam isteklerini engelle (en yüksek öncelik)
     const youtubeAdPatterns = [
       // --- Ad networks (domain-level — her zaman engelle) ---
@@ -204,7 +204,7 @@ class AdBlocker {
       '/ad_tag/',
       'googleplacementinterstitial'
     ];
-    
+
     // ÖNCE: YouTube ad patterns kontrol (yüksek öncelik — whitelist'ten önce)
     for (const pattern of youtubeAdPatterns) {
       if (url.includes(pattern)) {
@@ -239,22 +239,98 @@ class AdBlocker {
       }
     }
 
-    // Basit domain-based blocking (yaygın reklam domainleri)
+    // Comprehensive domain-based blocking
     const adDomains = [
-      'doubleclick.net',
-      'googlesyndication.com',
-      'googleadservices.com',
-      'google-analytics.com',
-      'facebook.com/tr',
-      'facebook.net',
-      'scorecardresearch.com',
-      'adnxs.com',
-      'advertising.com',
-      'criteo.com',
-      'outbrain.com',
-      'taboola.com',
-      'ads-twitter.com',
-      'analytics.twitter.com'
+      // Google ad ecosystem
+      'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+      'google-analytics.com', 'adservice.google.com',
+      'pagead2.googlesyndication.com', 'imasdk.googleapis.com',
+      'fundingchoicesmessages.google.com',
+      'ade.googlesyndication.com', 'adclick.g.doubleclick.net',
+      // Major ad exchanges / SSPs / DSPs
+      'adnxs.com', 'criteo.com', 'criteo.net',
+      'outbrain.com', 'taboola.com', 'taboolacdn.com',
+      'amazon-adsystem.com', 'moatads.com', 'adsrvr.org',
+      'rubiconproject.com', 'pubmatic.com', 'openx.net',
+      'media.net', 'mediavine.com', 'bidswitch.net',
+      'adform.net', 'smartadserver.com', 'gumgum.com',
+      'teads.tv', 'teads.com',
+      'indexexchange.com', 'casalemedia.com',
+      'sharethrough.com', 'undertone.com',
+      'yieldmo.com', '33across.com', 'triplelift.com',
+      'sovrn.com', 'lijit.com', 'sonobi.com',
+      'rhythmone.com', 'unrulymedia.com',
+      'spotxchange.com', 'spotx.tv',
+      'freewheel.com', 'freewheel.tv',
+      'liveintent.com', 'connatix.com',
+      'nativo.com', 'revcontent.com',
+      'content-ad.net', 'dianomi.com',
+      'zergnet.com', 'adblade.com',
+      // Tracking / analytics / pixels
+      'scorecardresearch.com', 'addthis.com', 'sharethis.com',
+      'quantserve.com', 'quantcast.com',
+      'bluekai.com', 'exelator.com',
+      'demdex.net', 'krxd.net', 'rlcdn.com',
+      'serving-sys.com', 'sizmek.com',
+      'eyeota.net', 'tapad.com', 'lotame.com',
+      'adsymptotic.com', 'rfihub.com',
+      'intentiq.com', 'id5-sync.com',
+      'liveramp.com', 'adsensor.com',
+      // Pop-under / aggressive ad networks
+      'popads.net', 'popcash.net', 'propellerads.com',
+      'exoclick.com', 'clickadu.com', 'hilltopads.net',
+      'popunder.net', 'popmyads.com',
+      'trafficjunky.com', 'juicyads.com', 'clicksor.com',
+      'admaven.com', 'ad-maven.com',
+      'trafficfactory.biz', 'plugrush.com',
+      'adxpansion.com', 'trafficstars.com',
+      'clickaine.com', 'adsterra.com',
+      'richpush.com', 'pushground.com',
+      'evadav.com', 'galaksion.com',
+      // Mobile ad networks
+      'adcolony.com', 'inmobi.com', 'mopub.com',
+      'applovin.com', 'vungle.com', 'chartboost.com',
+      'ironsrc.com', 'fyber.com', 'tapjoy.com',
+      // Video ad networks
+      'springserve.com', 'videologygroup.com',
+      'innovid.com', 'extreme-reach.com',
+      // Turkish ad networks
+      'plakout.com', 'emedya.com.tr', 'admatic.com.tr',
+      'adskeeper.com', 'adskeeper.co.uk', 'mgid.com',
+      'reklamstore.com', 'reklamaction.com', 'atemda.com',
+      'reklamup.com', 'medyanet.net', 'medyanetads.com',
+      'addays.com', 'admingle.com', 'mobilike.com',
+      'livad.com', 'setupad.com', 'optad360.com',
+      'denakop.com', 'unibots.in',
+      // Carbon / BuySellAds
+      'carbonads.net', 'carbonads.com', 'buysellads.com',
+      'bsa.network',
+      // Social media trackers
+      'ads-twitter.com', 'analytics.twitter.com',
+      'facebook.com/tr', 'facebook.net',
+      'tiktokads.com', 'analytics.tiktok.com',
+      // Misc ad/tracking
+      'advertising.com', 'contextweb.com', 'yldbt.com',
+      'mathtag.com', 'mxptint.net',
+      'bounceexchange.com', 'bouncex.net',
+      'revjet.com', 'narrative.io',
+      'zemanta.com', 'adroll.com', 'retargetly.com',
+      'steelhouse.com', 'nextroll.com',
+      'yandexadexchange.net', 'adfox.ru',
+      'ad4mat.com', 'adhese.com', 'adkernel.com',
+      'adloox.com', 'admixer.net', 'adnami.io',
+      'adsafeprotected.com', 'adthrive.com',
+      'betweendigital.com', 'brightcom.com',
+      'clickio.com', 'conversantmedia.com',
+      'emxdgt.com', 'engagebdr.com',
+      'justpremium.com', 'kargo.com', 'marfeel.com',
+      'mgid.org', 'mintegral.com', 'mobfox.com',
+      'onaudience.com', 'permutive.com',
+      'seedtag.com', 'smartclip.net',
+      'smaato.net', 'startapp.com',
+      'stickyadstv.com', 'verizonmedia.com',
+      'vidoomy.com', 'weborama.com',
+      'yieldlab.net', 'yieldlove.com'
     ];
 
     for (const domain of adDomains) {
@@ -644,7 +720,7 @@ class AdBlocker {
   // Cosmetic filtreleri al (element hiding için)
   getCosmeticFilters(domain) {
     if (!domain) return [];
-    
+
     return this.filters.cosmetic.filter(filter => {
       // Domain-specific filters
       if (filter.includes(domain)) return true;
@@ -739,10 +815,10 @@ class AdBlocker {
   addCustomFilter(filter) {
     const pattern = this.convertToRegex(filter);
     this.filters.block.push(pattern);
-    
+
     // Dosyaya kaydet
     try {
-      const currentFilters = fs.existsSync(this.filterListPath) 
+      const currentFilters = fs.existsSync(this.filterListPath)
         ? fs.readFileSync(this.filterListPath, 'utf8').split('\n')
         : [];
       currentFilters.push(filter);
@@ -757,7 +833,7 @@ class AdBlocker {
     const filter = `@@||${domain}^`;
     const pattern = this.convertToRegex(filter.substring(2));
     this.filters.allow.push(pattern);
-    
+
     try {
       const whitelistPath = path.join(path.dirname(this.filterListPath), 'whitelist.txt');
       const whitelist = fs.existsSync(whitelistPath)

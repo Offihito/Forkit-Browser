@@ -55,8 +55,72 @@
 
     <button id="go" title="Go"><i class="fas fa-arrow-right"></i></button>
     <button id="dpi-indicator" title="DPI Bypass Active"><i class="fas fa-shield-alt"></i></button>
+    <button id="adblock-btn" title="Ad Blocker"><i class="fas fa-shield-virus"></i></button>
     <button id="download-btn" title="Downloads"><i class="fas fa-download"></i></button>
     <button id="history-btn" title="History"><i class="fas fa-history"></i></button>
+  </div>
+
+  <!-- Ad Blocker Panel -->
+  <div id="adblock-panel" class="adblock-panel">
+    <div class="adblock-panel-header">
+      <h3><i class="fas fa-shield-virus"></i> Ad Blocker</h3>
+      <button id="adblock-panel-close">×</button>
+    </div>
+
+    <div class="adblock-panel-body">
+      <!-- Toggle -->
+      <div class="adblock-toggle-row">
+        <span class="adblock-toggle-label">Protection</span>
+        <span id="adblock-status-text" class="adblock-status-text active">Active</span>
+        <label class="adblock-switch">
+          <input type="checkbox" id="adblock-toggle" checked>
+          <span class="adblock-slider"></span>
+        </label>
+      </div>
+
+      <!-- Stats -->
+      <div class="adblock-stats">
+        <div class="adblock-stat-card blocked">
+          <i class="fas fa-ban"></i>
+          <div class="adblock-stat-value" id="adblock-stat-blocked">0</div>
+          <div class="adblock-stat-label">Blocked</div>
+        </div>
+        <div class="adblock-stat-card allowed">
+          <i class="fas fa-check-circle"></i>
+          <div class="adblock-stat-value" id="adblock-stat-allowed">0</div>
+          <div class="adblock-stat-label">Allowed</div>
+        </div>
+      </div>
+
+      <!-- Update Filters -->
+      <button id="adblock-update-btn" class="adblock-action-btn">
+        <i class="fas fa-sync-alt"></i> Update Filters
+      </button>
+      <div id="adblock-update-status" class="adblock-update-status"></div>
+
+      <!-- Custom Filter -->
+      <div class="adblock-input-group">
+        <label><i class="fas fa-filter"></i> Add Custom Filter</label>
+        <div class="adblock-input-row">
+          <input type="text" id="adblock-custom-filter" placeholder="||example.com^">
+          <button id="adblock-add-filter" class="adblock-small-btn"><i class="fas fa-plus"></i></button>
+        </div>
+      </div>
+
+      <!-- Whitelist -->
+      <div class="adblock-input-group">
+        <label><i class="fas fa-list-check"></i> Whitelist Domain</label>
+        <div class="adblock-input-row">
+          <input type="text" id="adblock-whitelist-input" placeholder="example.com">
+          <button id="adblock-add-whitelist" class="adblock-small-btn"><i class="fas fa-plus"></i></button>
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <button id="adblock-reset-stats" class="adblock-reset-btn">
+        <i class="fas fa-redo-alt"></i> Reset Stats
+      </button>
+    </div>
   </div>
 
   <!-- History Page -->
@@ -138,6 +202,7 @@
   <!-- Webview Container -->
   <div id="webview-container"></div>
 
+  <script src="nw-bridge.js"></script>
   <!-- Renderer Script -->
   <script type="module" src="renderer/renderer.js"></script>
 </body>

@@ -1,4 +1,20 @@
 // Settings Modal Functions
+const DEFAULT_LIGHT_BG =
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80";
+const DEFAULT_DARK_BG =
+  "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80";
+
+function getDefaultBackgroundUrl() {
+  return document.body.classList.contains("dark") ? DEFAULT_DARK_BG : DEFAULT_LIGHT_BG;
+}
+
+function applyDefaultBackground() {
+  document.body.style.backgroundImage = `url("${getDefaultBackgroundUrl()}")`;
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center";
+  document.body.style.backgroundRepeat = "no-repeat";
+  document.body.style.backgroundAttachment = "fixed";
+}
 
 // Modal açma
 function openSettings() {
@@ -30,9 +46,7 @@ function loadCurrentBackground() {
       preview.innerHTML = `<img src="${savedBackground}" alt="Background Preview">`;
     } else {
       // Mevcut tema'ya göre default background göster
-      const isDark = document.body.classList.contains('dark');
-      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-      preview.innerHTML = `<img src="${defaultBg}" alt="Default Background">`;
+      preview.innerHTML = `<img src="${getDefaultBackgroundUrl()}" alt="Default Background">`;
     }
   } catch (e) {
     console.log('Error loading background preview:', e);
@@ -110,10 +124,7 @@ function resetBackground() {
     localStorage.removeItem('newtab_background');
     
     // Default arka plana dön
-    const isDark = document.body.classList.contains('dark');
-    const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-    
-    document.body.style.backgroundImage = `url("${defaultBg}")`;
+    applyDefaultBackground();
     
     // Önizlemeyi güncelle
     loadCurrentBackground();
@@ -160,6 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedBackground = localStorage.getItem('newtab_background');
     if (savedBackground) {
       applyBackground(savedBackground);
+    } else {
+      applyDefaultBackground();
     }
   } catch (e) {
     console.log('Error loading saved background:', e);
@@ -175,9 +188,7 @@ window.toggleTheme = function() {
   try {
     const savedBackground = localStorage.getItem('newtab_background');
     if (!savedBackground) {
-      const isDark = document.body.classList.contains('dark');
-      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-      document.body.style.backgroundImage = `url("${defaultBg}")`;
+      applyDefaultBackground();
     }
   } catch (e) {
     console.log('Error updating background on theme change:', e);

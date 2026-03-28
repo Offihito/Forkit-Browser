@@ -14,6 +14,8 @@
       --text-light: #2c3e50;
       --text-dark: #e0e0e0;
       --shadow: rgba(0, 0, 0, 0.1);
+      --default-bg-light-url: url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80");
+      --default-bg-dark-url: url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1920&q=80");
     }
 
     body {
@@ -23,14 +25,28 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background-image: url("helpers/light.webp");
+      background-color: var(--bg-light);
+      background-image:
+        var(--default-bg-light-url),
+        linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
+      background-size: cover, cover;
+      background-position: center, center;
+      background-repeat: no-repeat, no-repeat;
+      background-attachment: fixed, fixed;
       color: var(--text-light);
       padding: 20px;
       transition: all 0.3s ease;
     }
 
     body.dark {
-    background-image: url("helpers/dark.png");
+    background-color: var(--bg-dark);
+    background-image:
+      var(--default-bg-dark-url),
+      linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    background-size: cover, cover;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    background-attachment: fixed, fixed;
     color: var(--text-dark);
     }
 

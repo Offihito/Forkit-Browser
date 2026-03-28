@@ -1,8 +1,6 @@
 // Settings Modal Functions
-const DEFAULT_LIGHT_BG =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80";
-const DEFAULT_DARK_BG =
-  "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80";
+const DEFAULT_LIGHT_BG = 'helpers/light.webp';
+const DEFAULT_DARK_BG = 'helpers/dark.png';
 
 function getDefaultBackgroundUrl() {
   return document.body.classList.contains("dark") ? DEFAULT_DARK_BG : DEFAULT_LIGHT_BG;

@@ -2,8 +2,31 @@
   if (window.__forkitCM) return;
   window.__forkitCM = true;
 
+  // Use BUBBLE phase (false) so website handlers fire first.
+  // If a site (e.g. YouTube player, Google Docs) already handled the event,
+  // we skip and let their menu appear instead of ours.
   document.addEventListener('contextmenu', function (e) {
+
+    // 1. If the website already prevented default → it has its own menu, skip
+    if (e.defaultPrevented) return;
+
+    // 2. Check if right-click is on/inside a <video> or <audio> with controls
+    //    → let the native media player context menu appear
+    let el = e.target;
+    let isMedia = false;
+    let checkEl = el;
+    while (checkEl && checkEl !== document) {
+      if (checkEl.tagName === 'VIDEO' || checkEl.tagName === 'AUDIO') {
+        isMedia = true;
+        break;
+      }
+      checkEl = checkEl.parentNode;
+    }
+    if (isMedia) return; // let native controls handle it
+
+    // 3. Our custom context menu
     e.preventDefault();
+
     let target = e.target;
     const params = {
       x: e.screenX,
@@ -47,5 +70,5 @@
     } catch (err) {
       console.log("__FORKIT_CM__:" + JSON.stringify(params));
     }
-  }, true);
+  }, false);
 })();

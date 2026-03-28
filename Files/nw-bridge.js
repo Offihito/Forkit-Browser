@@ -95,6 +95,14 @@
     console.error("❌ Failed to load adblock-content.js:", err.message);
   }
 
+  // ── Context Menu: script loading ──────────────────
+  let contextMenuScriptCode = "";
+  try {
+    const filesDir = getFilesDir() || path.join(process.cwd(), "Files");
+    const scriptPath = path.join(filesDir, "contextmenu-content.js");
+    contextMenuScriptCode = fs.readFileSync(scriptPath, "utf8");
+  } catch (err) { }
+
   // Track total blocked count (reported by content scripts via consolemessage)
   let totalBlocked = 0;
 
@@ -103,8 +111,11 @@
    * Uses addContentScripts for document_start injection (if available),
    * plus executeScript fallback with retries and verification.
    */
-  function setupWebviewAdBlocking(webviewEl) {
+  function setupWebviewAdBlocking(webviewEl, tabId) {
     if (!webviewEl || webviewEl.tagName === "IFRAME") return;
+
+    // Remember tabId for context menu events
+    webviewEl.__forkitTabId = tabId;
 
     // --- Listen for messages from the content script to track blocked count ---
     webviewEl.addEventListener("consolemessage", (e) => {
@@ -118,6 +129,12 @@
               adBlocker.stats.blocked = totalBlocked;
             }
           }
+        } catch (err) { }
+      } else if (e.message && e.message.startsWith("__FORKIT_CM__:")) {
+        try {
+          const jsonStr = e.message.substring("__FORKIT_CM__:".length);
+          const params = JSON.parse(jsonStr);
+          window.windowAPI.showContextMenu(params, webviewEl.__forkitTabId);
         } catch (err) { }
       }
     });
@@ -187,11 +204,19 @@
                 tryInject(adBlockScriptCode);
               }
             });
-            return;
           } catch (e) { }
+        } else {
+          tryInject(adBlockScriptCode);
         }
-        // If verification isn't possible, just inject (the script's own guard prevents double-run)
-        tryInject(adBlockScriptCode);
+
+        // Also inject context menu tracker
+        if (contextMenuScriptCode) {
+          if (typeof webviewEl.executeScript === "function") {
+            webviewEl.executeScript({ code: contextMenuScriptCode }, () => { });
+          } else if (typeof webviewEl.executeJavaScript === "function") {
+            webviewEl.executeJavaScript(contextMenuScriptCode).catch(() => { });
+          }
+        }
       };
 
       doVerifyAndInject();
@@ -303,22 +328,91 @@
     });
   }
 
-  function emitContext(action, tabId, payload = {}) {
-    emit("contextMenuCommand", { action, tabId, ...payload });
+  // ── Custom HTML Context Menu ───────────────────────────────────────────
+  // NW.js nw.Menu popup click callbacks are unreliable on Linux/GTK.
+  // This builds a styled HTML overlay instead, using standard DOM events.
+
+  let _ctxOverlay = null; // backdrop
+  let _ctxMenu = null;    // the menu div
+
+  function _injectCtxStyles() {
+    if (document.getElementById("__forkit-ctx-styles")) return;
+    const style = document.createElement("style");
+    style.id = "__forkit-ctx-styles";
+    style.textContent = `
+      .__fk-ctx-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 99999; background: transparent;
+      }
+      .__fk-ctx-menu {
+        position: fixed; z-index: 100000;
+        min-width: 220px; max-width: 340px;
+        background: var(--surface, #1e1e1e);
+        border: 1px solid var(--outline, #303134);
+        border-radius: 8px;
+        padding: 4px 0;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--on-surface, #e8eaed);
+        user-select: none;
+        animation: __fkCtxFade 0.12s ease;
+      }
+      @keyframes __fkCtxFade {
+        from { opacity: 0; transform: scale(0.96); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      .__fk-ctx-item {
+        padding: 7px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: background 0.1s;
+        border-radius: 0;
+      }
+      .__fk-ctx-item:hover {
+        background: var(--primary-container, rgba(138,180,248,0.15));
+      }
+      .__fk-ctx-item.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .__fk-ctx-sep {
+        height: 1px;
+        margin: 4px 12px;
+        background: var(--outline, #303134);
+      }
+    `;
+    document.head.appendChild(style);
   }
 
-  function addMenuItem(menu, label, action, tabId, payload = {}, enabled = true) {
-    menu.append(
-      new nw.MenuItem({
-        label,
-        enabled,
-        click: () => emitContext(action, tabId, payload)
-      })
-    );
+  function _closeCtxMenu() {
+    if (_ctxOverlay && _ctxOverlay.parentNode) _ctxOverlay.remove();
+    if (_ctxMenu && _ctxMenu.parentNode) _ctxMenu.remove();
+    _ctxOverlay = null;
+    _ctxMenu = null;
   }
 
-  function appendSeparator(menu) {
-    menu.append(new nw.MenuItem({ type: "separator" }));
+  function _addCtxItem(menu, label, action, tabId, payload, enabled) {
+    const div = document.createElement("div");
+    div.className = "__fk-ctx-item" + (enabled === false ? " disabled" : "");
+    div.textContent = label;
+    div.addEventListener("click", function (e) {
+      e.stopPropagation();
+      _closeCtxMenu();
+      emit("contextMenuCommand", { action, tabId, ...payload });
+    });
+    menu.appendChild(div);
+  }
+
+  function _addCtxSep(menu) {
+    const sep = document.createElement("div");
+    sep.className = "__fk-ctx-sep";
+    menu.appendChild(sep);
   }
 
   window.windowAPI = {
@@ -331,6 +425,7 @@
     },
     close: () => nwWin.close(),
     closeApp: () => nw.App.quit(),
+    showDevTools: () => nwWin.showDevTools(),
     ping: () => console.log("NW bridge ready"),
 
     downloadItem: (url, fileName) => {
@@ -342,52 +437,96 @@
     onStartDownloadFromWebview: (cb) => typeof cb === "function" && listeners.startDownloadFromWebview.push(cb),
 
     showContextMenu: (params, tabId) => {
-      const menu = new nw.Menu();
+      _injectCtxStyles();
+      _closeCtxMenu(); // close previous
+
       const text = params?.selectionText || "";
       const link = params?.linkURL || "";
       const imageUrl = params?.srcURL || "";
 
+      // Build the menu div
+      const menu = document.createElement("div");
+      menu.className = "__fk-ctx-menu";
+
       if (text) {
-        addMenuItem(menu, "Copy", "copy-selection", tabId, { text });
-        addMenuItem(menu, `Search Google for "${text.substring(0, 30)}..."`, "create-tab", tabId, {
+        _addCtxItem(menu, "Copy", "copy-selection", tabId, { text });
+        _addCtxItem(menu, `Search Google for "${text.substring(0, 30)}…"`, "create-tab", tabId, {
           url: `https://www.google.com/search?q=${encodeURIComponent(text)}`
         });
-        appendSeparator(menu);
+        _addCtxSep(menu);
       }
 
       if (link) {
-        addMenuItem(menu, "Open link in new tab", "create-tab", tabId, { url: link });
-        addMenuItem(menu, "Copy link address", "copy-link", tabId, { url: link });
-        appendSeparator(menu);
+        _addCtxItem(menu, "Open link in new tab", "create-tab", tabId, { url: link });
+        _addCtxItem(menu, "Copy link address", "copy-link", tabId, { url: link });
+        _addCtxSep(menu);
       }
 
       if (imageUrl) {
-        addMenuItem(menu, "Open image in new tab", "create-tab", tabId, { url: imageUrl });
-        addMenuItem(menu, "Copy image address", "copy-image-link", tabId, { url: imageUrl });
-        addMenuItem(menu, "Save image as...", "download-image", tabId, {
+        _addCtxItem(menu, "Open image in new tab", "create-tab", tabId, { url: imageUrl });
+        _addCtxItem(menu, "Copy image address", "copy-image-link", tabId, { url: imageUrl });
+        _addCtxItem(menu, "Save image as…", "download-image", tabId, {
           url: imageUrl,
           fileName: imageUrl.split("/").pop().split("?")[0] || "image.png"
         });
-        appendSeparator(menu);
+        _addCtxSep(menu);
       }
 
       if (params?.isEditable) {
-        addMenuItem(menu, "Paste", "paste", tabId);
-        addMenuItem(menu, "Cut", "cut", tabId);
-        appendSeparator(menu);
+        _addCtxItem(menu, "Paste", "paste", tabId, {});
+        _addCtxItem(menu, "Cut", "cut", tabId, {});
+        _addCtxSep(menu);
       }
 
-      addMenuItem(menu, "Back", "back", tabId, {}, Boolean(params?.canGoBack));
-      addMenuItem(menu, "Forward", "forward", tabId, {}, Boolean(params?.canGoForward));
-      addMenuItem(menu, "Refresh", "reload", tabId);
-      appendSeparator(menu);
-      addMenuItem(menu, "Save page as...", "download-page", tabId);
-      addMenuItem(menu, "Print...", "print", tabId);
-      appendSeparator(menu);
-      addMenuItem(menu, "View source", "view-source", tabId);
-      addMenuItem(menu, "Inspect (DevTools)", "inspect", tabId);
+      _addCtxItem(menu, "Back", "back", tabId, {}, Boolean(params?.canGoBack));
+      _addCtxItem(menu, "Forward", "forward", tabId, {}, Boolean(params?.canGoForward));
+      _addCtxItem(menu, "Refresh", "reload", tabId, {});
+      _addCtxSep(menu);
+      _addCtxItem(menu, "Save page as…", "download-page", tabId, {});
+      _addCtxItem(menu, "Print…", "print", tabId, {});
+      _addCtxSep(menu);
+      _addCtxItem(menu, "View source", "view-source", tabId, {});
+      _addCtxItem(menu, "Inspect (DevTools)", "inspect", tabId, {});
 
-      menu.popup(params?.x || 0, params?.y || 0);
+      // Transparent overlay to catch clicks outside the menu
+      const overlay = document.createElement("div");
+      overlay.className = "__fk-ctx-overlay";
+      overlay.addEventListener("click", _closeCtxMenu);
+      overlay.addEventListener("contextmenu", function (e) {
+        e.preventDefault();
+        _closeCtxMenu();
+      });
+
+      document.body.appendChild(overlay);
+      document.body.appendChild(menu);
+      _ctxOverlay = overlay;
+      _ctxMenu = menu;
+
+      // Position: convert screen coords to window-relative
+      let x = Math.round(params?.x || 0);
+      let y = Math.round(params?.y || 0);
+      try {
+        x -= window.screenX || window.screenLeft || 0;
+        y -= window.screenY || window.screenTop || 0;
+      } catch (e) { /* use raw */ }
+
+      // Clamp to viewport so menu doesn't go off-screen
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const rect = menu.getBoundingClientRect();
+      if (x + rect.width > vw) x = vw - rect.width - 4;
+      if (y + rect.height > vh) y = vh - rect.height - 4;
+      if (x < 0) x = 4;
+      if (y < 0) y = 4;
+
+      menu.style.left = x + "px";
+      menu.style.top = y + "px";
+
+      // Close on Escape key
+      const onKey = (e) => {
+        if (e.key === "Escape") { _closeCtxMenu(); document.removeEventListener("keydown", onKey); }
+      };
+      document.addEventListener("keydown", onKey);
     },
     onContextMenuCommand: (cb) => typeof cb === "function" && listeners.contextMenuCommand.push(cb),
 
@@ -414,7 +553,7 @@
       /** Check if a URL belongs to an ad domain */
       isAdUrl: (url) => adBlocker.isEnabled && adBlocker.shouldBlock(url, 'sub_frame'),
       /** Wire up network-level blocking + YouTube injection on a <webview> */
-      setupWebview: (webviewEl) => setupWebviewAdBlocking(webviewEl)
+      setupWebview: (webviewEl, tabId) => setupWebviewAdBlocking(webviewEl, tabId)
     }
   };
 

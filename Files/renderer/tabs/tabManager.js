@@ -181,15 +181,15 @@ function upgradeIframeToWebview(tab, targetUrl) {
 
   webview.addEventListener("context-menu", (e) => {
     e.preventDefault();
-    window.windowAPI?.showContextMenu(e.params, tab.tabId);
   });
 
+  // Legacy hook removed
   onAny(["new-window", "newwindow"], (e) => {
     e.preventDefault();
     const nextUrl = e.url || e.targetUrl || "";
     if (!nextUrl) return;
 
-    const downloadExtensions = [".pdf",".zip",".rar",".7z",".tar",".gz",".exe",".dmg",".pkg",".deb",".rpm",".mp3",".mp4",".avi",".mkv",".mov",".flv",".doc",".docx",".xls",".xlsx",".ppt",".pptx",".iso",".apk",".ipa"];
+    const downloadExtensions = [".pdf", ".zip", ".rar", ".7z", ".tar", ".gz", ".exe", ".dmg", ".pkg", ".deb", ".rpm", ".mp3", ".mp4", ".avi", ".mkv", ".mov", ".flv", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".iso", ".apk", ".ipa"];
     const isDownloadable = downloadExtensions.some((ext) => nextUrl.toLowerCase().includes(ext));
     if (isDownloadable) {
       import("../downloads/downloadManager.js").then(({ startDownload }) => {
@@ -205,7 +205,7 @@ function upgradeIframeToWebview(tab, targetUrl) {
   webview.setUserAgent(userAgent);
 
   // Wire up ad blocking (network interception + YouTube injection)
-  window.windowAPI?.adBlock?.setupWebview?.(webview);
+  window.windowAPI?.adBlock?.setupWebview?.(webview, tab.tabId);
 
   // Update address bar
   tab.url = targetUrl;
@@ -285,7 +285,7 @@ export function createTab(url = "newtab.html") {
       });
 
     // No-ops for features that rely on Electron webview.
-    webview.setUserAgent = () => {};
+    webview.setUserAgent = () => { };
     webview.reload = () => {
       try {
         webview.contentWindow?.location?.reload();
@@ -293,12 +293,12 @@ export function createTab(url = "newtab.html") {
         webview.src = webview.src;
       }
     };
-    webview.print = () => {};
-    webview.paste = () => {};
-    webview.cut = () => {};
+    webview.print = () => { };
+    webview.paste = () => { };
+    webview.cut = () => { };
     webview.isDevToolsOpened = () => false;
-    webview.openDevTools = () => {};
-    webview.closeDevTools = () => {};
+    webview.openDevTools = () => { };
+    webview.closeDevTools = () => { };
   } else {
     // Electron-style webview APIs.
     if (typeof webview.executeJavaScript !== "function") {
@@ -348,11 +348,11 @@ export function createTab(url = "newtab.html") {
   const displayInitialUrl = api?.fileUrlToDisplayPath?.(initialSrc) || url;
 
   const tab = {
-    webview, 
-    tabElement, 
+    webview,
+    tabElement,
     url: displayInitialUrl,
-    history, 
-    historyIndex, 
+    history,
+    historyIndex,
     tabId,
     isNavigating: false,
     isLoading: false
@@ -450,8 +450,12 @@ export function createTab(url = "newtab.html") {
 
     const onMessage = (event) => {
       try {
-        if (event.source === webview.contentWindow && event.data?.type === "request-history") {
-          sendHistoryData();
+        if (event.source === webview.contentWindow) {
+          if (event.data?.type === "request-history") {
+            sendHistoryData();
+          } else if (event.data?.type === "__FORKIT_CM__") {
+            window.windowAPI?.showContextMenu(event.data.params, tabId);
+          }
         }
       } catch {
         /* ignore */
@@ -477,6 +481,11 @@ export function createTab(url = "newtab.html") {
       }
 
       handleLoadedPage(currentUrl, title);
+
+      // Inject Context Menu script into iframe
+      fetch("contextmenu-content.js").then(r => r.text()).then(code => {
+        webview.executeJavaScript(code).catch(() => { });
+      }).catch(() => { });
     });
 
     // Listen for navigation requests from the newtab iframe (quick links, search)
@@ -509,7 +518,7 @@ export function createTab(url = "newtab.html") {
               history: ${JSON.stringify(state.globalHistory)}
             }, "*");
           `)
-          .catch(() => {});
+          .catch(() => { });
       }
     });
 
@@ -562,10 +571,9 @@ export function createTab(url = "newtab.html") {
 
     webview.addEventListener("context-menu", (e) => {
       e.preventDefault();
-      window.windowAPI?.showContextMenu(e.params, tab.tabId);
     });
 
-    // new-window event - yeni sekme veya indirme için
+    // Legacy hook removed
     onAny(["new-window", "newwindow"], (e) => {
       e.preventDefault();
       const nextUrl = e.url || e.targetUrl || "";
@@ -622,17 +630,17 @@ export function createTab(url = "newtab.html") {
 
   state.tabs.push(tab);
   switchTab(tab);
-  
+
   setTimeout(() => {
     makeTabsDraggable();
     updateActiveTabHighlight();
     webview.setUserAgent(userAgent);
     // Wire up ad blocking for non-iframe webviews
     if (!useIframe) {
-      window.windowAPI?.adBlock?.setupWebview?.(webview);
+      window.windowAPI?.adBlock?.setupWebview?.(webview, tab.tabId);
     }
   }, 100);
-  
+
   return tab;
 }
 
@@ -653,7 +661,7 @@ export function switchTab(tab) {
 
 export function closeTab(tab) {
   const index = state.tabs.indexOf(tab);
-  
+
   try {
     const tabHistoryKey = `forkit_tab_history_${tab.tabId}`;
     localStorage.removeItem(tabHistoryKey);
@@ -666,7 +674,7 @@ export function closeTab(tab) {
   } catch {
     /* ignore */
   }
-  
+
   tab.webview.remove();
   tab.tabElement.remove();
   state.tabs.splice(index, 1);
@@ -680,7 +688,7 @@ export function closeTab(tab) {
     const newActive = state.tabs[Math.max(0, index - 1)];
     switchTab(newActive);
   }
-  
+
   setTimeout(() => {
     makeTabsDraggable();
     updateActiveTabHighlight();

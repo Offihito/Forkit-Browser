@@ -107,7 +107,7 @@ function createWindow() {
       return;
     }
 
-    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType);
+    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType, details.referrer || details.documentUrl || '');
 
     if (shouldBlock) {
       console.log('🚫 Blocked:', details.resourceType, details.url);
@@ -172,7 +172,7 @@ function createWindow() {
       return;
     }
 
-    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType);
+    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType, details.referrer || details.documentUrl || '');
 
     if (shouldBlock) {
       console.log('🚫 Blocked (webview):', details.resourceType, details.url);

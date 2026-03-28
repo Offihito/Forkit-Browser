@@ -37,7 +37,7 @@ try {
         return { cancel: false };
       }
 
-      var shouldBlock = adBlocker.shouldBlock(url, details.type || "other");
+      var shouldBlock = adBlocker.shouldBlock(url, details.type || "other", details.documentUrl || details.initiator || '');
       if (shouldBlock) {
         console.log("🚫 [webRequest] Blocked:", details.type, url.substring(0, 120));
         return { cancel: true };

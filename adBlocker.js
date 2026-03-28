@@ -2,6 +2,8 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const fetch = require('cross-fetch');
+const { FiltersEngine, Request } = require('@ghostery/adblocker');
 
 class AdBlocker {
   constructor() {
@@ -17,6 +19,8 @@ class AdBlocker {
     };
     this.filterListPath = path.join(__dirname, 'Data', 'adblock-filters.txt');
     this.statsPath = path.join(__dirname, 'Data', 'adblock-stats.json');
+    this.engine = null;
+    this.initPromise = this.init();
 
     this.loadFilters();
     this.loadStats();
@@ -70,12 +74,56 @@ class AdBlocker {
     this.parseFilters(allFilters);
     this.saveFilters(allFilters);
 
+    try {
+      this.engine = await FiltersEngine.fromPrebuiltAdsAndTracking(fetch);
+      console.log('✅ Ghostery adblock engine initialized');
+    } catch (err) {
+      console.error('Failed to initialize Ghostery engine:', err && err.message ? err.message : err);
+      this.engine = null;
+    }
+
     return {
       total: allFilters.length,
       block: this.filters.block.length,
       allow: this.filters.allow.length,
       cosmetic: this.filters.cosmetic.length
     };
+  }
+
+  async init() {
+    try {
+      this.engine = await FiltersEngine.fromPrebuiltAdsAndTracking(fetch);
+      console.log('✅ Ghostery adblock engine initialized');
+    } catch (err) {
+      console.error('Failed to initialize Ghostery engine:', err && err.message ? err.message : err);
+      this.engine = null;
+    }
+  }
+
+  normalizeResourceType(type) {
+    if (!type || typeof type !== 'string') return 'other';
+    const lower = type.toLowerCase();
+    switch (lower) {
+      case 'mainframe':
+      case 'main_frame':
+        return 'main_frame';
+      case 'subframe':
+      case 'sub_frame':
+        return 'sub_frame';
+      case 'xmlhttprequest':
+      case 'xhr':
+        return 'xmlhttprequest';
+      case 'stylesheet':
+      case 'script':
+      case 'image':
+      case 'font':
+      case 'ping':
+      case 'media':
+      case 'object':
+        return lower;
+      default:
+        return 'other';
+    }
   }
 
   // Filter listesini indir
@@ -151,8 +199,9 @@ class AdBlocker {
   }
 
   // URL'nin engellenip engellenmeyeceğini kontrol et
-  shouldBlock(url, type = 'other') {
+  shouldBlock(url, type = 'other', sourceUrl = '') {
     if (!this.isEnabled) return false;
+    const normalizedType = this.normalizeResourceType(type);
 
     // YouTube için özel kurallar - kritik kaynakları engelleme
     // NOT: googlevideo.com/videoplayback burada intentionally whitelist'te DEĞİL.
@@ -219,6 +268,20 @@ class AdBlocker {
     for (const domain of youtubeWhitelist) {
       if (url.includes(domain)) {
         return false;
+      }
+    }
+
+    if (this.engine) {
+      try {
+        const request = Request.fromRawDetails({ url, type: normalizedType, sourceUrl });
+        const result = this.engine.match(request);
+        if (result && result.match && result.filter) {
+          this.stats.blocked++;
+          this.saveStats();
+          return true;
+        }
+      } catch (err) {
+        console.error('Ghostery engine match failed:', err && err.message ? err.message : err);
       }
     }
 

@@ -83,12 +83,15 @@ export function updateHistoryDropdown() {
 
   const recent = state.activeTab.history.slice().reverse().slice(0, 10);
   recent.forEach(entry => {
+    let hostname = entry.url;
+    try { hostname = new URL(entry.url).hostname; } catch(e) {}
+    
     const div = document.createElement('div');
     div.className = 'history-item';
     div.innerHTML = `
       <img src="${entry.favicon}" alt="">
       <span>${entry.title}</span>
-      <small>${new URL(entry.url).hostname}</small>
+      <small>${hostname}</small>
     `;
     div.onclick = (e) => {
       e.stopPropagation();

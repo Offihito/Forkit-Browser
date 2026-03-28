@@ -147,6 +147,7 @@
         webviewEl.addContentScripts([{
           name: "forkitAdBlock",
           matches: ["http://*/*", "https://*/*"],
+          exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
           js: { code: adBlockScriptCode },
           run_at: "document_start",
           all_frames: true
@@ -224,10 +225,24 @@
 
     const injectAll = () => {
       if (!webviewEl.isConnected) return;
+      
+      const url = webviewEl.src || "";
+      
+      // CRITICAL: Cloudflare Turnstile anti-tamper detects executeScript and addContentScripts
+      // and forcefully aborts the browser connection (window.stop() -> ERR_ABORTED).
+      // We must completely bypass injection on these sensitive auth/challenge domains.
+      if (
+        url.includes('roblox.com') || 
+        url.includes('discord.com') || 
+        url.includes('discordapp.com') || 
+        url.includes('cloudflare.com')
+      ) {
+        return;
+      }
+
       forceInject();
 
       // YouTube-specific injection
-      const url = webviewEl.src || "";
       if (url.includes("youtube.com") || url.includes("youtu.be")) {
         const ytScript = adBlocker.getYouTubeContentScript();
         if (ytScript) {

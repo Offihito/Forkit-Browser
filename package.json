@@ -27,7 +27,7 @@
     "frame": false,
     "icon": "build/icon.png"
   },
-  "chromium-args": "--disable-blink-features=AutomationControlled --disable-features=IsolateOrigins,site-per-process --no-sandbox",
+  "chromium-args": "--disable-blink-features=AutomationControlled --enable-features=EncryptedClientHello --proxy-server=http://127.0.0.1:7676",
   "node-remote": "<all_urls>",
   "bg-script": "bg-script.js",
   "permissions": [
@@ -41,6 +41,7 @@
   "dependencies": {
     "@ghostery/adblocker": "^2.14.1",
     "@ghostery/adblocker-electron": "^2.14.1",
-    "cross-fetch": "^4.1.0"
+    "cross-fetch": "^4.1.0",
+    "fs-extra": "^11.3.4"
   }
 }

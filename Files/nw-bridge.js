@@ -264,6 +264,14 @@
       if (e.isTopLevel) injectAll();
     });
 
+    // NW.js: Handle permission requests (download, etc.)
+    webviewEl.addEventListener("permissionrequest", (e) => {
+      console.log("🔐 Permission request:", e.permission);
+      if (e.permission === "download") {
+        e.request.allow();
+      }
+    });
+
     // Delayed retries — aggressive schedule to ensure injection succeeds
     setTimeout(injectAll, 300);
     setTimeout(injectAll, 800);

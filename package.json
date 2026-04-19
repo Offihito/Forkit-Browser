@@ -33,7 +33,8 @@
   "permissions": [
     "webview",
     "clipboardRead",
-    "clipboardWrite"
+    "clipboardWrite",
+    "download"
   ],
   "devDependencies": {
     "nw": "^0.107.0"

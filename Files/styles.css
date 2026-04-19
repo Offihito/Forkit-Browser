@@ -239,8 +239,8 @@ button:hover {
   color: var(--tab-inactive);
   padding: 10px 16px;
   border-radius: 16px 16px 0 0;
-  min-width: 8vw;
-  max-width: 14vw;
+  min-width: 10vw;
+  max-width: 18vw;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -321,15 +321,16 @@ button:hover {
 }
 
 .tab-close {
-  width: 2vh;
-  height: 2vh;
+  width: 3vh;
+  height: 3vh;
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
+  margin-left: auto;
 }
 
 .tab:hover .tab-close {

@@ -67,7 +67,7 @@ function createWindow() {
 
   // SECURITY: Set proper permissions
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal'];
+    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal', 'download'];
     if (allowedPermissions.includes(permission)) {
       callback(true);
     } else {
@@ -75,13 +75,14 @@ function createWindow() {
     }
   });
 
-  // CRITICAL: Enhanced header manipulation for Google
+  // CRITICAL: Enhanced header manipulation for Google & Cloudflare Bypass
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
 
     // Remove Electron-specific headers that Google detects
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
+    delete headers['dnt']; // Remove Do Not Track header
 
     // Set Chrome-like headers
     headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
@@ -96,11 +97,33 @@ function createWindow() {
     // Accept language
     headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
 
+    // CLOUDFLARE BYPASS: Essential headers
+    headers['accept'] = headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
+    headers['accept-encoding'] = 'gzip, deflate, br';
+    headers['cache-control'] = 'max-age=0';
+    headers['pragma'] = 'no-cache';
+    headers['referer'] = headers['referer'] || 'https://www.google.com/';
+    headers['x-forwarded-for'] = '127.0.0.1';
+    
+    // User-Agent for better compatibility
+    headers['user-agent'] = userAgent;
+
     callback({ requestHeaders: headers });
   });
 
   // AD BLOCKER: Block requests
   ses.webRequest.onBeforeRequest((details, callback) => {
+    const url = details.url;
+    
+    // CLOUDFLARE: Never block
+    const cloudflarePatterns = ['cloudflare.com', 'cf-cdn.com', 'cdn-cgi', 'challenges.cloudflare.com', 'cflare.com'];
+    for (const pattern of cloudflarePatterns) {
+      if (url.includes(pattern)) {
+        callback({ cancel: false });
+        return;
+      }
+    }
+    
     // Ana sayfa ve navigation isteklerini asla engelleme
     if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
       callback({ cancel: false });
@@ -140,16 +163,17 @@ function createWindow() {
 
   // Set permissions for webview
   webviewSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal'];
+    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal', 'download'];
     callback(allowedPermissions.includes(permission));
   });
 
-  // Apply same header manipulation for webviews
+  // Apply same header manipulation for webviews (CLOUDFLARE BYPASS)
   webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
 
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
+    delete headers['dnt'];
 
     headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
     headers['sec-ch-ua-mobile'] = '?0';
@@ -159,13 +183,35 @@ function createWindow() {
     headers['sec-fetch-user'] = headers['sec-fetch-user'] || '?1';
     headers['sec-fetch-dest'] = headers['sec-fetch-dest'] || 'document';
     headers['upgrade-insecure-requests'] = '1';
+
+    // Accept language
     headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
+
+    // CLOUDFLARE BYPASS: Essential headers
+    headers['accept'] = headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
+    headers['accept-encoding'] = 'gzip, deflate, br';
+    headers['cache-control'] = 'max-age=0';
+    headers['pragma'] = 'no-cache';
+    headers['referer'] = headers['referer'] || 'https://www.google.com/';
+    headers['x-forwarded-for'] = '127.0.0.1';
+    headers['user-agent'] = userAgent;
 
     callback({ requestHeaders: headers });
   });
 
   // AD BLOCKER: Block requests for webviews
   webviewSession.webRequest.onBeforeRequest((details, callback) => {
+    const url = details.url;
+    
+    // CLOUDFLARE: Never block
+    const cloudflarePatterns = ['cloudflare.com', 'cf-cdn.com', 'cdn-cgi', 'challenges.cloudflare.com', 'cflare.com'];
+    for (const pattern of cloudflarePatterns) {
+      if (url.includes(pattern)) {
+        callback({ cancel: false });
+        return;
+      }
+    }
+    
     // Ana sayfa ve navigation isteklerini asla engelleme
     if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
       callback({ cancel: false });

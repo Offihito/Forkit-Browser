@@ -201,6 +201,23 @@ class AdBlocker {
   // URL'nin engellenip engellenmeyeceğini kontrol et
   shouldBlock(url, type = 'other', sourceUrl = '') {
     if (!this.isEnabled) return false;
+    
+    // CLOUDFLARE: Never block ANY Cloudflare resources
+    const cloudflarePatterns = [
+      'cloudflare.com',
+      'cf-cdn.com',
+      'cdn-cgi',
+      'challenges.cloudflare.com',
+      'cflare.com',
+      'cloudflareinsights.com'
+    ];
+    
+    for (const pattern of cloudflarePatterns) {
+      if (url.includes(pattern)) {
+        return false; // Never block Cloudflare
+      }
+    }
+    
     const normalizedType = this.normalizeResourceType(type);
 
     // YouTube için özel kurallar - kritik kaynakları engelleme

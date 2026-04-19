@@ -150,6 +150,8 @@ function upgradeIframeToWebview(tab, targetUrl) {
   const webview = document.createElement("webview");
   webview.classList.add("webview");
   webview.partition = "persist:browser";
+  webview.allowtransparency = "true";
+  webview.download = true; // NW.js: Enable download
 
   // Resolve URL
   const resolved = api?.resolveLocalAppPageUrl?.(targetUrl);

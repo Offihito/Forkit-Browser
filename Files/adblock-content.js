@@ -13,7 +13,13 @@
     console.log('__FORKIT_ADBLOCK__:' + blockedCount);
   }
 
-  // ═══ 0. Site detection — avoid false positives on known sites ═══
+  // ═══ 0.5. Inject hide rule for optimal performance ═══
+  // PERFORMANCE: Use CSS class instead of setProperty 8x per element
+  try {
+    var style = document.createElement('style');
+    style.textContent = '.forkit-hidden-ad{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}';
+    document.documentElement.appendChild(style);
+  } catch (e) { }
   var hostname = '';
   try { hostname = window.location.hostname.toLowerCase(); } catch (e) { }
   var isYouTube = hostname.indexOf('youtube.com') !== -1 || hostname.indexOf('youtu.be') !== -1;
@@ -268,16 +274,17 @@
   // Using CSS hiding instead of .remove() to prevent layout corruption.
   // Removed elements can break page structure; hidden elements are invisible
   // but don't break layout dependencies.
+  // PERFORMANCE: Use CSS class instead of 8 setProperty calls
   function hideElement(el) {
     try {
-      el.style.setProperty('display', 'none', 'important');
-      el.style.setProperty('visibility', 'hidden', 'important');
-      el.style.setProperty('height', '0', 'important');
-      el.style.setProperty('min-height', '0', 'important');
-      el.style.setProperty('max-height', '0', 'important');
-      el.style.setProperty('overflow', 'hidden', 'important');
-      el.style.setProperty('opacity', '0', 'important');
-      el.style.setProperty('pointer-events', 'none', 'important');
+      if (typeof el.classList !== 'undefined' && el.classList.add) {
+        el.classList.add('forkit-hidden-ad');
+      } else {
+        // Fallback for older environments
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+        el.style.setProperty('height', '0', 'important');
+      }
     } catch (e) { }
   }
 
@@ -641,9 +648,18 @@
     setTimeout(function () { cleanup(); scanOverlays(); }, 3000);
     setTimeout(function () { cleanup(); scanOverlays(); }, 5000);
 
-    // Ongoing: ad cleanup every 8s, overlay scan every 5s
-    setInterval(cleanup, 8000);
-    setInterval(scanOverlays, 5000);
+    // Ongoing: MutationObserver catches most ads in real-time
+    // Full cleanup every 60s instead of 8s to reduce CPU impact on ad-heavy pages
+    // PERFORMANCE: Reduced from 8s to 60s - MutationObserver now handles most cases
+    const cleanupInterval = setInterval(cleanup, 60000);
+    // Overlay scan every 30s (down from 5s) - most overlays are caught immediately by observer
+    const overlayInterval = setInterval(scanOverlays, 30000);
+    
+    // Clear intervals on page unload/navigation
+    window.addEventListener('beforeunload', () => {
+      clearInterval(cleanupInterval);
+      clearInterval(overlayInterval);
+    });
   }
 
   if (document.readyState !== 'loading') {

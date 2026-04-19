@@ -850,6 +850,39 @@ export function closeTab(tab) {
     /* ignore */
   }
 
+  // SECURITY: Remove all event listeners from webview to prevent memory leaks
+  try {
+    if (tab.webview && typeof tab.webview.removeEventListener === 'function') {
+      // Remove common listener events that may be attached
+      const eventNames = [
+        'did-start-loading', 'loadstart',
+        'did-finish-load', 'loadstop',
+        'loadabort', 'did-fail-load',
+        'load', 'consolemessage',
+        'ipc-message', 'dom-ready',
+        'page-title-updated', 'page-favicon-updated',
+        'context-menu', 'new-window', 'newwindow',
+        'render-process-gone', 'crashed',
+        'permissionrequest'
+      ];
+      eventNames.forEach(evt => {
+        // Note: This removes ALL listeners for these events
+        // In production, consider storing listener refs and removing specifically
+        try {
+          // Clone and re-attach to "remove" all listeners is not ideal
+          // A better approach would be to store listener refs, but this is simpler
+          const newWebview = tab.webview.cloneNode(false);
+          tab.webview.parentNode?.replaceChild(newWebview, tab.webview);
+          tab.webview = newWebview;
+        } catch (e) {
+          // If clone fails, just proceed with removal
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('Error removing webview listeners:', e);
+  }
+
   tab.webview.remove();
   tab.tabElement.remove();
   state.tabs.splice(index, 1);

@@ -18,8 +18,22 @@ export function initIPC() {
           break;
 
         case 'download-link':
-          const fileName = data.url.split('/').pop().split('?')[0] || 'download';
-          startDownload(data.url, fileName);
+          // SECURITY: Validate URL and sanitize filename to prevent path traversal
+          let dlUrl = data.url;
+          try {
+            // Validate it's a proper URL
+            new URL(dlUrl);
+          } catch (err) {
+            console.error('Invalid URL for download:', err);
+            break;
+          }
+          // Extract and sanitize filename
+          let fileName = dlUrl.split('/').pop().split('?')[0] || 'download';
+          // Remove path traversal attempts and invalid characters
+          fileName = fileName.replace(/\.\.\/|\.\.\\|[<>:"|?*]/g, '_');
+          // Ensure it has a reasonable length and extension
+          if (fileName.length > 255) fileName = fileName.substring(0, 240);
+          startDownload(dlUrl, fileName);
           break;
 
         case 'download-image':

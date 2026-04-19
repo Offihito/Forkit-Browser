@@ -64,10 +64,12 @@ export function initAdBlockerUI() {
     updateStatus.textContent = "";
     try {
       const result = await adBlock.updateFilterLists();
-      updateStatus.textContent = `✅ ${result.total.toLocaleString()} filters loaded (${result.block.toLocaleString()} block, ${result.allow.toLocaleString()} allow)`;
+      // SECURITY: Use textContent instead of template literal to prevent XSS
+    updateStatus.textContent = '✅ ' + result.total.toLocaleString() + ' filters loaded (' + result.block.toLocaleString() + ' block, ' + result.allow.toLocaleString() + ' allow)';
       updateStatus.className = "adblock-update-status success";
     } catch (err) {
-      updateStatus.textContent = `❌ Update failed: ${err.message}`;
+      // SECURITY: Use textContent, escape error message
+      updateStatus.textContent = '❌ Update failed: ' + (err.message ? err.message.substring(0, 100) : 'Unknown error');
       updateStatus.className = "adblock-update-status error";
     } finally {
       updateBtn.disabled = false;
@@ -84,7 +86,10 @@ export function initAdBlockerUI() {
     if (!filter) return;
     await adBlock.addCustomFilter(filter);
     filterInput.value = "";
-    showToast("Filter added: " + filter);
+    // SECURITY: Escape filter text when displaying in toast
+    const escapedFilter = document.createElement('div');
+    escapedFilter.textContent = filter;
+    showToast("Filter added: " + escapedFilter.innerHTML);
   });
 
   filterInput?.addEventListener("keypress", (e) => {

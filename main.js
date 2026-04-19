@@ -312,11 +312,13 @@ app.whenReady().then(() => {
     ]
   });
 
-  // IMPORTANT: Only use these in development, not production
-  // Google may detect these as suspicious
-  if (debug_mode) {
-    app.commandLine.appendSwitch('ignore-certificate-errors');
-  }
+  // SECURITY: Certificate error bypass REMOVED
+  // Allowing this enables MITM attacks and is NEVER safe, even in development
+  // If testing self-signed certs is needed, use a proper test CA instead
+  // if (debug_mode) {
+  //   // DANGER: This would enable MITM attacks - DO NOT USE
+  //   // app.commandLine.appendSwitch('ignore-certificate-errors');
+  // }
 
   // CRITICAL: Add Chrome flags to appear more like real Chrome
   app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');

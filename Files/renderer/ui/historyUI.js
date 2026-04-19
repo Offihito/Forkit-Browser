@@ -41,18 +41,41 @@ export function renderHistoryPage(filter = "") {
     if (arr.length === 0) return;
     const g = document.createElement('div');
     g.className = 'history-group';
-    g.innerHTML = `<h3>${title}</h3>`;
+    // SECURITY: Use textContent for title, not innerHTML
+    const h3 = document.createElement('h3');
+    h3.textContent = title;
+    g.appendChild(h3);
+    
     arr.reverse().forEach(entry => {
       const el = document.createElement('div');
       el.className = 'history-entry';
-      el.innerHTML = `
-        <img src="${entry.favicon}" onerror="this.src='https://www.google.com/s2/favicons?sz=64'">
-        <div class="info">
-          <div class="title">${entry.title}</div>
-          <div class="url">${entry.url}</div>
-        </div>
-        <div class="time">${formatTime(entry.time)}</div>
-      `;
+      
+      // SECURITY: Build DOM safely without innerHTML injection
+      const img = document.createElement('img');
+      img.src = entry.favicon || 'https://www.google.com/s2/favicons?sz=64';
+      img.onerror = () => { img.src = 'https://www.google.com/s2/favicons?sz=64'; };
+      el.appendChild(img);
+      
+      const info = document.createElement('div');
+      info.className = 'info';
+      
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'title';
+      titleDiv.textContent = entry.title;
+      info.appendChild(titleDiv);
+      
+      const urlDiv = document.createElement('div');
+      urlDiv.className = 'url';
+      urlDiv.textContent = entry.url;
+      info.appendChild(urlDiv);
+      
+      el.appendChild(info);
+      
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'time';
+      timeDiv.textContent = formatTime(entry.time);
+      el.appendChild(timeDiv);
+      
       el.onclick = () => {
         // Dynamic import to avoid circular dependency
         import("../tabs/tabManager.js").then(({ createTab }) => {
@@ -88,11 +111,21 @@ export function updateHistoryDropdown() {
     
     const div = document.createElement('div');
     div.className = 'history-item';
-    div.innerHTML = `
-      <img src="${entry.favicon}" alt="">
-      <span>${entry.title}</span>
-      <small>${hostname}</small>
-    `;
+    
+    // SECURITY: Build DOM safely without innerHTML injection
+    const img = document.createElement('img');
+    img.src = entry.favicon || '';
+    img.alt = '';
+    div.appendChild(img);
+    
+    const span = document.createElement('span');
+    span.textContent = entry.title;
+    div.appendChild(span);
+    
+    const small = document.createElement('small');
+    small.textContent = hostname;
+    div.appendChild(small);
+    
     div.onclick = (e) => {
       e.stopPropagation();
       // Dynamic import to avoid circular dependency

@@ -39,13 +39,17 @@ function loadCurrentBackground() {
   try {
     const savedBackground = localStorage.getItem('newtab_background');
     const preview = document.getElementById('backgroundPreview');
+    preview.innerHTML = ''; // Clear existing
     
+    const img = document.createElement('img');
+    img.alt = 'Background Preview';
     if (savedBackground) {
-      preview.innerHTML = `<img src="${savedBackground}" alt="Background Preview">`;
+      img.src = savedBackground;
     } else {
       // Mevcut tema'ya göre default background göster
-      preview.innerHTML = `<img src="${getDefaultBackgroundUrl()}" alt="Default Background">`;
+      img.src = getDefaultBackgroundUrl();
     }
+    preview.appendChild(img);
   } catch (e) {
     console.log('Error loading background preview:', e);
   }
@@ -81,9 +85,13 @@ function handleBackgroundUpload(event) {
       // Arka planı güncelle
       applyBackground(imageData);
       
-      // Önizlemeyi güncelle
+      // Önizlemeyi güncelle - SECURITY: use DOM methods instead of innerHTML
       const preview = document.getElementById('backgroundPreview');
-      preview.innerHTML = `<img src="${imageData}" alt="Background Preview">`;
+      preview.innerHTML = '';
+      const img = document.createElement('img');
+      img.alt = 'Background Preview';
+      img.src = imageData;
+      preview.appendChild(img);
       
       // Başarı bildirimi (opsiyonel)
       showNotification('Background updated successfully!');

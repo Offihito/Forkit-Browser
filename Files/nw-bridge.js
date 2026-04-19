@@ -272,13 +272,14 @@
       }
     });
 
-    // Delayed retries — aggressive schedule to ensure injection succeeds
-    setTimeout(injectAll, 300);
-    setTimeout(injectAll, 800);
-    setTimeout(injectAll, 1500);
-    setTimeout(injectAll, 3000);
-    setTimeout(injectAll, 5000);
-    setTimeout(injectAll, 8000);
+    // Delayed retries — but only if not already injected (prevent 6× duplication)
+    // This was causing 6+ MutationObservers on same element = memory leak
+    if (!webviewEl.__adblockInited) {
+      webviewEl.__adblockInited = true;
+      setTimeout(injectAll, 300);
+      setTimeout(injectAll, 800);
+      setTimeout(injectAll, 1500);
+    }
   }
 
   const nwWin = nw.Window.get();

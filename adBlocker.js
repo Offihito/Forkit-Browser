@@ -705,7 +705,11 @@ class AdBlocker {
 
         // ============================================================
         // 4. Ana video length'ini kaydet + Interval
-        setInterval(handleAd, 300);
+        // SECURITY: Store interval ID and clear on beforeunload
+        const adHandlerInterval = setInterval(handleAd, 300);
+        window.addEventListener('beforeunload', () => {
+          clearInterval(adHandlerInterval);
+        });
 
         // ============================================================
         // 5. fetch / XMLHttpRequest intercept — YouTube ad config yanıtlarını engelle
@@ -715,55 +719,73 @@ class AdBlocker {
         (function interceptFetch() {
           const originalFetch = window.fetch;
           window.fetch = function(...args) {
-            const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+            try {
+              const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
 
-            // Tamamen engel: ad network domains
-            if (url.includes('/pagead/') ||
-                url.includes('doubleclick') ||
-                url.includes('googleadservices') ||
-                url.includes('adservice.google')) {
-              return Promise.resolve(new Response('{}'));
-            }
+              // Tamamen engel: ad network domains
+              if (url.includes('/pagead/') ||
+                  url.includes('doubleclick') ||
+                  url.includes('googleadservices') ||
+                  url.includes('adservice.google')) {
+                return Promise.resolve(new Response('{}'));
+              }
 
-            // /youtubei/v1/player — response'dan ad payload'ı temizle
-            if (url.includes('youtubei/v1/player')) {
-              return originalFetch.apply(this, args).then(response => {
-                if (!response.ok) return response;
-                return response.text().then(text => {
-                  try {
-                    const data = JSON.parse(text);
-                    // Ad payload'ları temizle
-                    if (data.streamingData && data.streamingData.adSupportedFormats) {
-                      delete data.streamingData.adSupportedFormats;
+              // /youtubei/v1/player — response'dan ad payload'ı temizle
+              if (url.includes('youtubei/v1/player')) {
+                return originalFetch.apply(this, args).then(response => {
+                  if (!response.ok) return response;
+                  return response.text().then(text => {
+                    try {
+                      const data = JSON.parse(text);
+                      // Ad payload'ları temizle
+                      if (data.streamingData && data.streamingData.adSupportedFormats) {
+                        delete data.streamingData.adSupportedFormats;
+                      }
+                      if (data.videoDetails && data.videoDetails.isAd) {
+                        data.videoDetails.isAd = false;
+                      }
+                      // adRenderer'ları ara ve sil
+                      const cleaned = JSON.stringify(data)
+                        .replace(/"adRenderer":\{[^}]*\}/g, '')
+                        .replace(/"adPods":\[[^\]]*\]/g, '"adPods":[]')
+                        .replace(/"adUnit":\{[^}]*\}/g, '');
+                      return new Response(cleaned, {
+                        status: response.status,
+                        headers: { 'Content-Type': 'application/json' }
+                      });
+                    } catch(e) {
+                      // JSON parse/stringify error — orijinal response döndür
+                      console.warn('AdBlock fetch cleaning error:', e.message);
+                      return new Response(text, {
+                        status: response.status,
+                        headers: response.headers
+                      });
                     }
-                    if (data.videoDetails && data.videoDetails.isAd) {
-                      data.videoDetails.isAd = false;
-                    }
-                    // adRenderer'ları ara ve sil
-                    const cleaned = JSON.stringify(data)
-                      .replace(/"adRenderer":\{[^}]*\}/g, '')
-                      .replace(/"adPods":\[[^\]]*\]/g, '"adPods":[]')
-                      .replace(/"adUnit":\{[^}]*\}/g, '');
-                    return new Response(cleaned, {
-                      status: response.status,
-                      headers: { 'Content-Type': 'application/json' }
-                    });
-                  } catch(e) {
-                    // JSON parse fail → orijinal response döndür
-                    return new Response(text, {
-                      status: response.status,
-                      headers: response.headers
-                    });
-                  }
+                  }).catch(err => {
+                    // Text read error
+                    console.warn('AdBlock fetch text read error:', err.message);
+                    return response;
+                  });
+                }).catch(err => {
+                  // Fetch error — orijinale fallback
+                  console.warn('AdBlock fetch interception error:', err.message);
+                  return originalFetch.apply(this, args);
                 });
-              });
-            }
+              }
 
-            return originalFetch.apply(this, args);
+              return originalFetch.apply(this, args);
+            } catch (e) {
+              // Top-level error — fallback to original fetch
+              console.warn('AdBlock fetch wrapper error:', e.message);
+              return originalFetch.apply(this, args);
+            }
           };
         })();
 
         (function interceptXHR() {
+          // SECURITY: Use WeakSet instead of prototype pollution to track blocked XHRs
+          const blockedXHRs = new WeakSet();
+          
           const originalOpen = XMLHttpRequest.prototype.open;
           XMLHttpRequest.prototype.open = function(method, url) {
             if (typeof url === 'string') {
@@ -771,8 +793,8 @@ class AdBlocker {
                   url.includes('doubleclick') ||
                   url.includes('googleadservices') ||
                   url.includes('adservice.google')) {
-                // Bu isteği silent olarak "boş" yap
-                this.__blocked = true;
+                // Mark this request as blocked using WeakSet
+                blockedXHRs.add(this);
               }
             }
             return originalOpen.apply(this, arguments);
@@ -780,7 +802,7 @@ class AdBlocker {
 
           const originalSend = XMLHttpRequest.prototype.send;
           XMLHttpRequest.prototype.send = function() {
-            if (this.__blocked) {
+            if (blockedXHRs.has(this)) {
               console.log('🚫 XHR blocked');
               this.readyState = 4;
               this.status = 200;

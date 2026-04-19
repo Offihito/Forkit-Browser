@@ -5,6 +5,7 @@ import { updateTabTitle } from "../ui/helpers.js";
 import { updateHistoryDropdown } from "../ui/historyUI.js";
 import { saveTabHistory, saveGlobalHistory } from "../history/globalHistory.js";
 import { userAgent } from "../env/userAgent.js";
+import { startDownload } from "../downloads/downloadManager.js";
 
 // ── Content script that monitors title & favicon changes inside a webview ──
 // NW.js/Chrome webview does NOT support Electron events like
@@ -127,6 +128,17 @@ function setupTitleFaviconConsoleListener(webview, tab, updateFaviconFn) {
       const favicon = e.message.substring('__FORKIT_FAVICON__:'.length);
       if (favicon && updateFaviconFn) {
         updateFaviconFn(favicon);
+      }
+    } else if (e.message.startsWith('__FORKIT_DOWNLOAD__:')) {
+      try {
+        const jsonStr = e.message.substring('__FORKIT_DOWNLOAD__:'.length);
+        const downloadData = JSON.parse(jsonStr);
+        console.log('📥 Download intercepted from webview in tabManager:', downloadData);
+        if (downloadData.url && downloadData.fileName) {
+          startDownload(downloadData.url, downloadData.fileName);
+        }
+      } catch (err) {
+        console.error('❌ Failed to parse download data:', err.message);
       }
     }
   });

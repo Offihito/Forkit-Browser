@@ -103,6 +103,17 @@
     contextMenuScriptCode = fs.readFileSync(scriptPath, "utf8");
   } catch (err) { }
 
+  // ── Download Interceptor: script loading ──────────────────
+  let downloadInterceptorScriptCode = "";
+  try {
+    const filesDir = getFilesDir() || path.join(process.cwd(), "Files");
+    const scriptPath = path.join(filesDir, "download-content.js");
+    downloadInterceptorScriptCode = fs.readFileSync(scriptPath, "utf8");
+    console.log("✅ Download interceptor script loaded (" + downloadInterceptorScriptCode.length + " chars)");
+  } catch (err) {
+    console.error("❌ Failed to load download-content.js:", err.message);
+  }
+
   // Track total blocked count (reported by content scripts via consolemessage)
   let totalBlocked = 0;
 
@@ -136,6 +147,29 @@
           const params = JSON.parse(jsonStr);
           window.windowAPI.showContextMenu(params, webviewEl.__forkitTabId);
         } catch (err) { }
+      } else if (e.message && e.message.startsWith("__FORKIT_DOWNLOAD__:")) {
+        try {
+          const jsonStr = e.message.substring("__FORKIT_DOWNLOAD__:".length);
+          const downloadData = JSON.parse(jsonStr);
+          console.log("📥 Download intercepted from webview:", downloadData);
+          console.log("📥 Listeners registered:", listeners.startDownloadFromWebview.length);
+          
+          // Send to download manager
+          if (listeners.startDownloadFromWebview.length > 0) {
+            emit("startDownloadFromWebview", downloadData);
+            console.log("✅ Download event emitted to UI listeners");
+          } else {
+            console.warn("⚠️ No UI listeners registered, using direct download");
+          }
+          
+          // Also save it directly
+          if (downloadData.url && downloadData.fileName) {
+            saveToDownloads(downloadData.url, downloadData.fileName);
+            console.log("✅ Download started:", downloadData.fileName);
+          }
+        } catch (err) {
+          console.error("❌ Failed to parse download data:", err.message);
+        }
       }
     });
 
@@ -143,16 +177,35 @@
     // Using inline code instead of file path because file paths are resolved
     // relative to the webview's URL (remote site), not the app package.
     try {
-      if (typeof webviewEl.addContentScripts === "function" && adBlockScriptCode) {
-        webviewEl.addContentScripts([{
-          name: "forkitAdBlock",
-          matches: ["http://*/*", "https://*/*"],
-          exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
-          js: { code: adBlockScriptCode },
-          run_at: "document_start",
-          all_frames: true
-        }]);
-        console.log("✅ addContentScripts registered (document_start, inline code)");
+      if (typeof webviewEl.addContentScripts === "function") {
+        const scripts = [];
+        
+        if (adBlockScriptCode) {
+          scripts.push({
+            name: "forkitAdBlock",
+            matches: ["http://*/*", "https://*/*"],
+            exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
+            js: { code: adBlockScriptCode },
+            run_at: "document_start",
+            all_frames: true
+          });
+        }
+
+        if (downloadInterceptorScriptCode) {
+          scripts.push({
+            name: "forkitDownloadInterceptor",
+            matches: ["http://*/*", "https://*/*"],
+            exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
+            js: { code: downloadInterceptorScriptCode },
+            run_at: "document_start",
+            all_frames: true
+          });
+        }
+
+        if (scripts.length > 0) {
+          webviewEl.addContentScripts(scripts);
+          console.log("✅ addContentScripts registered (document_start, inline code) - " + scripts.length + " script(s)");
+        }
       }
     } catch (err) {
       console.warn("⚠️ addContentScripts failed:", err.message);
@@ -216,6 +269,15 @@
             webviewEl.executeScript({ code: contextMenuScriptCode }, () => { });
           } else if (typeof webviewEl.executeJavaScript === "function") {
             webviewEl.executeJavaScript(contextMenuScriptCode).catch(() => { });
+          }
+        }
+
+        // Also inject download interceptor
+        if (downloadInterceptorScriptCode) {
+          if (typeof webviewEl.executeScript === "function") {
+            webviewEl.executeScript({ code: downloadInterceptorScriptCode }, () => { });
+          } else if (typeof webviewEl.executeJavaScript === "function") {
+            webviewEl.executeJavaScript(downloadInterceptorScriptCode).catch(() => { });
           }
         }
       };

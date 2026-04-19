@@ -65,10 +65,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // ========== WEBVIEW DOWNLOAD LISTENER ==========
   // Main process'ten gelen download isteklerini dinle
+  console.log('📥 Registering webview download listener');
   window.windowAPI?.onStartDownloadFromWebview((data) => {
-    console.log('Download request from webview:', data);
-    startDownload(data.url, data.filename);
+    console.log('🎯 Download request from webview received:', data);
+    if (!data || !data.url) {
+      console.warn('❌ Invalid download data:', data);
+      return;
+    }
+    startDownload(data.url, data.fileName);
   });
+  console.log('✅ Webview download listener registered');
   // ========== END WEBVIEW DOWNLOAD LISTENER ==========
 
   // FIRST TAB

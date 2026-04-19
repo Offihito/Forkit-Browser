@@ -247,6 +247,21 @@ function createWindow() {
     });
   });
 
+  // Also handle main window downloads
+  win.webContents.session.on('will-download', (event, item, webContents) => {
+    event.preventDefault();
+
+    const url = item.getURL();
+    const filename = item.getFilename();
+
+    console.log('Download intercepted from main window:', { url, filename });
+
+    win.webContents.send('start-download-from-webview', {
+      url: url,
+      filename: filename
+    });
+  });
+
   win.loadFile('Files/index.html');
   if (debug_mode) {
     win.webContents.openDevTools();

@@ -19,32 +19,46 @@ function formatTime(seconds) {
 }
 
 export function initDownloadManager() {
+  console.log('🔧 Initializing download manager');
+  console.log('📍 downloadBtn:', dom.downloadBtn);
+  console.log('📍 downloadPanel:', dom.downloadPanel);
+  console.log('📍 downloadList:', dom.downloadList);
+  
   // Download panel toggle
   dom.downloadBtn.onclick = () => {
+    console.log('🔘 Download button clicked, toggling panel');
     dom.downloadPanel.classList.toggle('open');
   };
 
   dom.downloadClose.onclick = () => {
+    console.log('❌ Close button clicked');
     dom.downloadPanel.classList.remove('open');
   };
 
   // Listen to download events
   window.windowAPI?.onDownloadProgress((data) => {
+    console.log('📊 Download progress:', data);
     updateDownloadItem(data.fileName, data.progress, 'downloading', data);
   });
 
   window.windowAPI?.onDownloadComplete((data) => {
+    console.log('✅ Download complete:', data);
     updateDownloadItem(data.fileName, 100, 'complete', data);
   });
 
   window.windowAPI?.onDownloadError((data) => {
+    console.log('❌ Download error:', data);
     updateDownloadItem(data.fileName, 0, 'error', data);
   });
+  
+  console.log('✅ Download manager initialized');
 }
 
 export function startDownload(url, fileName) {
   const downloadId = Date.now() + Math.random();
   const name = fileName || url.split('/').pop().split('?')[0] || 'download';
+  
+  console.log('🔽 startDownload called:', { url, fileName, name });
   
   downloads.push({
     id: downloadId,
@@ -55,6 +69,7 @@ export function startDownload(url, fileName) {
   
   addDownloadItem(name);
   dom.downloadPanel.classList.add('open');
+  console.log('🟢 Download panel opened, item added');
   
   // Blob URL için özel işlem
   if (url.startsWith('blob:')) {
@@ -91,6 +106,8 @@ function handleBlobDownload(blobUrl, fileName) {
 }
 
 function addDownloadItem(fileName) {
+  console.log('➕ Adding download item:', fileName);
+  
   const item = document.createElement('div');
   item.className = 'download-item';
   item.dataset.fileName = fileName;
@@ -113,11 +130,19 @@ function addDownloadItem(fileName) {
   `;
   
   dom.downloadList.insertBefore(item, dom.downloadList.firstChild);
+  console.log('✅ Download item added to DOM');
 }
 
 function updateDownloadItem(fileName, progress, status, data = {}) {
-  const item = dom.downloadList.querySelector(`[data-file-name="${fileName}"]`);
-  if (!item) return;
+  const selector = `[data-file-name="${fileName}"]`;
+  const item = dom.downloadList.querySelector(selector);
+  
+  if (!item) {
+    console.warn('⚠️ Download item not found:', { fileName, selector });
+    return;
+  }
+  
+  console.log('🔄 Updating download item:', { fileName, progress, status });
   
   const fill = item.querySelector('.download-progress-fill');
   const statusEl = item.querySelector('.download-status');
@@ -125,8 +150,8 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
   const sizeEl = item.querySelector('.download-size');
   const timeEl = item.querySelector('.download-time');
   
-  fill.style.width = progress + '%';
-  percentEl.textContent = progress + '%';
+  fill.style.width = Math.min(progress, 100) + '%';
+  percentEl.textContent = Math.min(progress, 100) + '%';
   
   // Update size and time if available
   if (data.totalSize) {
@@ -134,7 +159,7 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
     sizeEl.textContent = `${formatBytes(downloaded)} / ${formatBytes(data.totalSize)}`;
     
     // Calculate estimated time remaining
-    if (progress > 0 && progress < 100) {
+    if (progress > 0 && progress < 100 && downloaded > 0) {
       const elapsedTime = (Date.now() - (item.dataset.startTime || Date.now())) / 1000;
       const speed = downloaded / elapsedTime; // bytes per second
       const remaining = data.totalSize - downloaded;
@@ -142,6 +167,14 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
       
       timeEl.textContent = `Time remaining: ${formatTime(timeRemaining)}`;
     }
+  } else {
+    // No size info available - show what we know
+    if (data.downloaded) {
+      sizeEl.textContent = `${formatBytes(data.downloaded)} / Unknown size`;
+    } else {
+      sizeEl.textContent = 'Size: Downloading...';
+    }
+    timeEl.textContent = 'Time: Calculating...';
   }
   
   // Store start time for calculations
@@ -153,13 +186,16 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
     item.classList.add('download-complete');
     statusEl.textContent = 'Complete';
     timeEl.textContent = 'Completed';
+    fill.style.width = '100%';
+    percentEl.textContent = '100%';
     item.querySelector('.download-item-header i').className = 'fas fa-check-circle';
   } else if (status === 'error') {
     item.classList.add('download-error');
     statusEl.textContent = 'Failed';
     timeEl.textContent = 'Failed';
     item.querySelector('.download-item-header i').className = 'fas fa-exclamation-circle';
-  } else {
+  } else if (status === 'downloading') {
     statusEl.textContent = 'Downloading...';
+    item.classList.remove('download-complete', 'download-error');
   }
 }

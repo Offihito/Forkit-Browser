@@ -238,46 +238,24 @@ class AdBlocker {
       'googlevideo.com/videoplayback'    // Actual video stream
     ];
 
-    // YouTube reklam isteklerini engelle (en yüksek öncelik)
-    const youtubeAdPatterns = [
-      // --- Ad networks (domain-level — her zaman engelle) ---
-      'doubleclick.net',
-      'googlesyndication.com',
-      'googleadservices.com',
-      'googleads.g.doubleclick.net',
-      'static.doubleclick.net',
-      'advertising.youtube.com',
-      'ads.google.com',
-      'ad.youtube.com',
-      'adservice.google.com',
-      'r.googleyoutube.com',
-      'tracking.google.com',
-      'cm.smartadserver.com',
-      'tds.gumgum.com',
-      // --- YouTube ad-specific endpoints ---
-      'youtube.com/pagead/',
-      'google.com/pagead/',
-      'youtube.com/api/stats/ads',
-      'youtube.com/api/stats/atr',
-      'youtube.com/get_midroll_',
-      'youtube.com/youtubei/v1/log_event',
-      'youtube.com/csi_204',
-      // --- Ad serving API endpoints ---
-      'youtubei/v1/player/ad_unit',
-      'youtube.com/youtubei/v1/browse?includeAdData',
-      // --- Ad config ---
-      '/adtag/',
-      '/ad_tag/',
-      'googleplacementinterstitial'
-    ];
-
-    // ÖNCE: YouTube ad patterns kontrol (yüksek öncelik — whitelist'ten önce)
-    for (const pattern of youtubeAdPatterns) {
-      if (url.includes(pattern)) {
-        this.stats.blocked++;
-        this.saveStats();
-        console.log('🎯 YouTube ad blocked:', url.substring(0, 100));
-        return true;
+    // YouTube için özel kurallar - ad network isteklerini ENGELLEME ki UI scriptimiz anında geçebilsin.
+    // Eğer ağ seviyesinde engellersek YouTube 5-10 saniye donarak zaman aşımını bekliyor.
+    if (sourceUrl.includes('youtube.com') || sourceUrl.includes('youtu.be')) {
+      const ytUINeedsAllow = [
+        'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+        'googleads.g.doubleclick.net', 'static.doubleclick.net',
+        'advertising.youtube.com', 'ads.google.com', 'ad.youtube.com',
+        'adservice.google.com', 'r.googleyoutube.com', 'tracking.google.com',
+        'youtube.com/pagead/', 'google.com/pagead/', 'youtube.com/api/stats/ads',
+        'youtube.com/api/stats/atr', 'youtube.com/get_midroll_',
+        'youtube.com/youtubei/v1/log_event', 'youtube.com/csi_204',
+        'youtubei/v1/player/ad_unit', 'youtube.com/youtubei/v1/browse?includeAdData',
+        '/adtag/', '/ad_tag/', 'googleplacementinterstitial'
+      ];
+      for (const pattern of ytUINeedsAllow) {
+        if (url.includes(pattern)) {
+          return false; // MUST ALLOW. Let the 16x fast-forward script handle it.
+        }
       }
     }
 
@@ -435,6 +413,7 @@ class AdBlocker {
         console.log('🎬 YouTube Ad Blocker Script Loaded (v2)');
 
         // ============================================================
+        // ============================================================
         // 1. CSS: Reklam elementlerini derhal gizle
         // ============================================================
         (function injectCSS() {
@@ -587,7 +566,7 @@ class AdBlocker {
           if (!video) return;
 
           adState.active = true;
-          adState.originalPlaybackRate = video.playbackRate || 1;
+          adState.originalPlaybackRate = (video.playbackRate && video.playbackRate !== 16) ? video.playbackRate : 1;
           adState.originalMuted = video.muted;
 
           video.muted = true;
@@ -608,13 +587,32 @@ class AdBlocker {
               cleanupAdState();
               return;
             }
+            
+            // Eğer skip butonu çıkarsa hemen tıkla
+            if (clickSkipButton()) {
+              cleanupAdState();
+              return;
+            }
+            
+            // YouTube playback rate'i sıfırlarsa tekrar 16x yap
+            const v = document.querySelector('video');
+            if (v) {
+              if (v.paused) {
+                try { v.play(); } catch(e) {}
+              }
+              if (!v.muted) v.muted = true;
+              if (v.playbackRate !== 16) {
+                try { v.playbackRate = 16; } catch(e) {}
+              }
+            }
+
             count++;
             if (count > 200) { // 10s safety timeout
               cleanupAdState();
             }
           }, 50);
 
-          console.log('⏩ Force skip started (mute + 16x)');
+          console.log('⏩ Force skip started (mute + 16x + seek)');
         }
 
         // Debug: her 3s bir kez video state'ini log
@@ -655,17 +653,21 @@ class AdBlocker {
             return;
           }
 
-          console.log('🚫 Ad detected!');
+          if (!adState.active) {
+            console.log('🚫 Ad detected!');
+          }
 
           if (clickSkipButton()) {
             console.log('✅ Skipped via button');
             cleanupAdState();
-            skipCooldown = now + 2000;
+            // Reduce cooldown to quickly detect follow-up ads
+            skipCooldown = now + 500;
             return;
           }
 
           forceSkipAd();
-          skipCooldown = now + 800;
+           // Reduce cooldown to quickly catch second ads
+          skipCooldown = now + 500;
         }
 
 
@@ -710,109 +712,6 @@ class AdBlocker {
         window.addEventListener('beforeunload', () => {
           clearInterval(adHandlerInterval);
         });
-
-        // ============================================================
-        // 5. fetch / XMLHttpRequest intercept — YouTube ad config yanıtlarını engelle
-        // Bu, YouTube'un /youtubei/v1/player veya /next endpoint'inden
-        // dönen "ad" bilgilerini yakalar.
-        // ============================================================
-        (function interceptFetch() {
-          const originalFetch = window.fetch;
-          window.fetch = function(...args) {
-            try {
-              const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
-
-              // Tamamen engel: ad network domains
-              if (url.includes('/pagead/') ||
-                  url.includes('doubleclick') ||
-                  url.includes('googleadservices') ||
-                  url.includes('adservice.google')) {
-                return Promise.resolve(new Response('{}'));
-              }
-
-              // /youtubei/v1/player — response'dan ad payload'ı temizle
-              if (url.includes('youtubei/v1/player')) {
-                return originalFetch.apply(this, args).then(response => {
-                  if (!response.ok) return response;
-                  return response.text().then(text => {
-                    try {
-                      const data = JSON.parse(text);
-                      // Ad payload'ları temizle
-                      if (data.streamingData && data.streamingData.adSupportedFormats) {
-                        delete data.streamingData.adSupportedFormats;
-                      }
-                      if (data.videoDetails && data.videoDetails.isAd) {
-                        data.videoDetails.isAd = false;
-                      }
-                      // adRenderer'ları ara ve sil
-                      const cleaned = JSON.stringify(data)
-                        .replace(/"adRenderer":\{[^}]*\}/g, '')
-                        .replace(/"adPods":\[[^\]]*\]/g, '"adPods":[]')
-                        .replace(/"adUnit":\{[^}]*\}/g, '');
-                      return new Response(cleaned, {
-                        status: response.status,
-                        headers: { 'Content-Type': 'application/json' }
-                      });
-                    } catch(e) {
-                      // JSON parse/stringify error — orijinal response döndür
-                      console.warn('AdBlock fetch cleaning error:', e.message);
-                      return new Response(text, {
-                        status: response.status,
-                        headers: response.headers
-                      });
-                    }
-                  }).catch(err => {
-                    // Text read error
-                    console.warn('AdBlock fetch text read error:', err.message);
-                    return response;
-                  });
-                }).catch(err => {
-                  // Fetch error — orijinale fallback
-                  console.warn('AdBlock fetch interception error:', err.message);
-                  return originalFetch.apply(this, args);
-                });
-              }
-
-              return originalFetch.apply(this, args);
-            } catch (e) {
-              // Top-level error — fallback to original fetch
-              console.warn('AdBlock fetch wrapper error:', e.message);
-              return originalFetch.apply(this, args);
-            }
-          };
-        })();
-
-        (function interceptXHR() {
-          // SECURITY: Use WeakSet instead of prototype pollution to track blocked XHRs
-          const blockedXHRs = new WeakSet();
-          
-          const originalOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function(method, url) {
-            if (typeof url === 'string') {
-              if (url.includes('/pagead/') ||
-                  url.includes('doubleclick') ||
-                  url.includes('googleadservices') ||
-                  url.includes('adservice.google')) {
-                // Mark this request as blocked using WeakSet
-                blockedXHRs.add(this);
-              }
-            }
-            return originalOpen.apply(this, arguments);
-          };
-
-          const originalSend = XMLHttpRequest.prototype.send;
-          XMLHttpRequest.prototype.send = function() {
-            if (blockedXHRs.has(this)) {
-              console.log('🚫 XHR blocked');
-              this.readyState = 4;
-              this.status = 200;
-              this.responseText = '{}';
-              if (typeof this.onload === 'function') this.onload();
-              return;
-            }
-            return originalSend.apply(this, arguments);
-          };
-        })();
 
         console.log('✅ YouTube Ad Blocker v2 hazır!');
       })();

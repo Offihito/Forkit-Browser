@@ -100,9 +100,9 @@ function fetchTitleAndFavicon(webview, callback) {
 function injectTitleMonitor(webview) {
   try {
     if (typeof webview.executeScript === 'function') {
-      webview.executeScript({ code: TITLE_FAVICON_MONITOR_SCRIPT }, () => {});
+      webview.executeScript({ code: TITLE_FAVICON_MONITOR_SCRIPT }, () => { });
     } else if (typeof webview.executeJavaScript === 'function') {
-      webview.executeJavaScript(TITLE_FAVICON_MONITOR_SCRIPT).catch(() => {});
+      webview.executeJavaScript(TITLE_FAVICON_MONITOR_SCRIPT).catch(() => { });
     }
   } catch (e) { /* ignore */ }
 }

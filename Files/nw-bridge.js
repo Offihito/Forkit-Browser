@@ -109,9 +109,9 @@
     const filesDir = getFilesDir() || path.join(process.cwd(), "Files");
     const scriptPath = path.join(filesDir, "download-content.js");
     downloadInterceptorScriptCode = fs.readFileSync(scriptPath, "utf8");
-    console.log("✅ Download interceptor script loaded (" + downloadInterceptorScriptCode.length + " chars)");
+    console.log("Download interceptor script loaded (" + downloadInterceptorScriptCode.length + " chars)");
   } catch (err) {
-    console.error("❌ Failed to load download-content.js:", err.message);
+    console.error("Failed to load download-content.js:", err.message);
   }
 
   // Track total blocked count (reported by content scripts via consolemessage)
@@ -130,6 +130,14 @@
 
     // --- Listen for messages from the content script to track blocked count ---
     webviewEl.addEventListener("consolemessage", (e) => {
+      if (e.message && !e.message.startsWith("__FORKIT")) {
+        try {
+          // Print debug logs to terminal exactly as requested
+          process.stdout.write(`[Guest Webview] ${e.message}\n`);
+        } catch (err) {
+          console.log(`[Guest Webview] ${e.message}`);
+        }
+      }
       if (e.message && e.message.startsWith("__FORKIT_ADBLOCK__:")) {
         try {
           const count = parseInt(e.message.split(":")[1]) || 0;
@@ -153,7 +161,7 @@
           const downloadData = JSON.parse(jsonStr);
           console.log("📥 Download intercepted from webview:", downloadData);
           console.log("📥 Listeners registered:", listeners.startDownloadFromWebview.length);
-          
+
           // Send to download manager
           if (listeners.startDownloadFromWebview.length > 0) {
             emit("startDownloadFromWebview", downloadData);
@@ -161,7 +169,7 @@
           } else {
             console.warn("⚠️ No UI listeners registered, using direct download");
           }
-          
+
           // Also save it directly
           if (downloadData.url && downloadData.fileName) {
             saveToDownloads(downloadData.url, downloadData.fileName);
@@ -179,7 +187,7 @@
     try {
       if (typeof webviewEl.addContentScripts === "function") {
         const scripts = [];
-        
+
         if (adBlockScriptCode) {
           scripts.push({
             name: "forkitAdBlock",
@@ -187,7 +195,7 @@
             exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
             js: { code: adBlockScriptCode },
             run_at: "document_start",
-            all_frames: true
+            all_frames: false
           });
         }
 
@@ -198,7 +206,7 @@
             exclude_matches: ["*://*.roblox.com/*", "*://*.discord.com/*", "*://*.discordapp.com/*", "*://*.cloudflare.com/*", "*://*.rbxcdn.com/*"],
             js: { code: downloadInterceptorScriptCode },
             run_at: "document_start",
-            all_frames: true
+            all_frames: false
           });
         }
 
@@ -287,16 +295,16 @@
 
     const injectAll = () => {
       if (!webviewEl.isConnected) return;
-      
+
       const url = webviewEl.src || "";
-      
+
       // CRITICAL: Cloudflare Turnstile anti-tamper detects executeScript and addContentScripts
       // and forcefully aborts the browser connection (window.stop() -> ERR_ABORTED).
       // We must completely bypass injection on these sensitive auth/challenge domains.
       if (
-        url.includes('roblox.com') || 
-        url.includes('discord.com') || 
-        url.includes('discordapp.com') || 
+        url.includes('roblox.com') ||
+        url.includes('discord.com') ||
+        url.includes('discordapp.com') ||
         url.includes('cloudflare.com')
       ) {
         return;
@@ -345,6 +353,9 @@
   }
 
   const nwWin = nw.Window.get();
+  nwWin.isMaximized = false;
+  nwWin.on('maximize', () => { nwWin.isMaximized = true; });
+  nwWin.on('unmaximize', () => { nwWin.isMaximized = false; });
   const clipboard = nw.Clipboard.get();
 
   const listeners = {
@@ -506,8 +517,15 @@
     fileUrlToDisplayPath: (u) => fileUrlToDisplayPath(u),
     minimize: () => nwWin.minimize(),
     maximize: () => {
-      if (nwWin.isMaximized) nwWin.restore();
-      else nwWin.maximize();
+      // Intelligently check if the screen is virtually maxed (prevents Linux minimize unmax bugs)
+      const isMax = nwWin.isMaximized || (window.outerWidth >= window.screen.availWidth * 0.95 && window.outerHeight >= window.screen.availHeight * 0.95);
+      if (isMax) {
+        nwWin.unmaximize();
+        nwWin.isMaximized = false;
+      } else {
+        nwWin.maximize();
+        nwWin.isMaximized = true;
+      }
     },
     close: () => nwWin.close(),
     closeApp: () => nw.App.quit(),

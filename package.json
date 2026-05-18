@@ -28,7 +28,6 @@
     "icon": "build/icon.png"
   },
   "chromium-args": "--disable-blink-features=AutomationControlled --enable-features=EncryptedClientHello --proxy-server=http://127.0.0.1:7676",
-  "node-remote": "<all_urls>",
   "bg-script": "bg-script.js",
   "permissions": [
     "webview",

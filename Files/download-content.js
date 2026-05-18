@@ -12,39 +12,39 @@
   // Intercept link clicks that should trigger downloads
   document.addEventListener('click', function (e) {
     let target = e.target;
-    
+
     // Find the nearest anchor element
     while (target && target !== document) {
       if (target.tagName === 'A' && target.href) {
         const href = target.href;
         const download = target.getAttribute('download');
         const dataDownload = target.getAttribute('data-download');
-        
+
         // Check if this is a download link
         // It's a download if:
         // 1. It has download attribute
         // 2. It has data-download attribute (some sites use this)
         // 3. It's to a file URL
-        if (download !== null || dataDownload !== null || 
-            /\.(pdf|zip|rar|7z|tar|gz|exe|dmg|pkg|apk|bin|msi|iso|torrent|json|csv|xlsx|docx|txt|js|css|json)$/i.test(href)) {
-          
+        if (download !== null || dataDownload !== null ||
+          /\.(pdf|zip|rar|7z|tar|gz|exe|dmg|pkg|apk|bin|msi|iso|torrent|json|csv|xlsx|docx|txt|js|css|json)$/i.test(href)) {
+
           console.log('⬇️ Download link detected:', { href, download, dataDownload });
-          
+
           e.preventDefault();
           e.stopPropagation();
-          
+
           const fileName = download || dataDownload || target.textContent.trim() || href.split('/').pop().split('?')[0] || 'download';
-          
+
           // Send to download manager via console message (will be caught by NW.js bridge)
           const downloadInfo = JSON.stringify({
             url: href,
             fileName: fileName
           });
-          
+
           console.log('__FORKIT_DOWNLOAD__:' + downloadInfo);
           console.log('✅ Download message sent');
           pendingDownloads.add(href);
-          
+
           return;
         }
       }

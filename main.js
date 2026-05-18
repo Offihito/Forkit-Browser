@@ -20,7 +20,17 @@ try {
 
 // CRITICAL: Use Chrome's exact user agent - Google checks this
 const chromeVersion = process.versions.chrome;
-const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+let osPlatform = '"Windows"';
+let osString = 'Windows NT 10.0; Win64; x64';
+if (process.platform === 'darwin') {
+  osPlatform = '"macOS"';
+  osString = 'Macintosh; Intel Mac OS X 10_15_7';
+} else if (process.platform === 'linux') {
+  osPlatform = '"Linux"';
+  osString = 'X11; Linux x86_64';
+}
+
+const userAgent = `Mozilla/5.0 (${osString}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
 app.userAgentFallback = userAgent;
 
 // SECURITY: Remove Electron from user agent completely
@@ -78,35 +88,21 @@ function createWindow() {
   // CRITICAL: Enhanced header manipulation for Google & Cloudflare Bypass
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
+    const url = details.url || '';
+    
+    // CLOUDFLARE BYPASS: Do not touch headers natively, prevents HTTP/2 header re-ordering
+    if (url.includes('cloudflare.com') || url.includes('challenges.cloudflare.com')) {
+      return callback({ cancel: false });
+    }
 
     // Remove Electron-specific headers that Google detects
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
     delete headers['dnt']; // Remove Do Not Track header
 
-    // Set Chrome-like headers
-    headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
-    headers['sec-ch-ua-mobile'] = '?0';
-    headers['sec-ch-ua-platform'] = '"Windows"';
-    headers['sec-fetch-site'] = headers['sec-fetch-site'] || 'none';
-    headers['sec-fetch-mode'] = headers['sec-fetch-mode'] || 'navigate';
-    headers['sec-fetch-user'] = headers['sec-fetch-user'] || '?1';
-    headers['sec-fetch-dest'] = headers['sec-fetch-dest'] || 'document';
-    headers['upgrade-insecure-requests'] = '1';
-
-    // Accept language
-    headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
-
-    // CLOUDFLARE BYPASS: Essential headers
-    headers['accept'] = headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
-    headers['accept-encoding'] = 'gzip, deflate, br';
-    headers['cache-control'] = 'max-age=0';
-    headers['pragma'] = 'no-cache';
-    headers['referer'] = headers['referer'] || 'https://www.google.com/';
-    headers['x-forwarded-for'] = '127.0.0.1';
-    
     // User-Agent for better compatibility
-    headers['user-agent'] = userAgent;
+    if (headers['user-agent']) delete headers['user-agent'];
+    headers['User-Agent'] = userAgent;
 
     callback({ requestHeaders: headers });
   });
@@ -170,31 +166,19 @@ function createWindow() {
   // Apply same header manipulation for webviews (CLOUDFLARE BYPASS)
   webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
+    const url = details.url || '';
 
+    // CLOUDFLARE BYPASS: Do not touch headers natively, prevents HTTP/2 header re-ordering
+    if (url.includes('cloudflare.com') || url.includes('challenges.cloudflare.com')) {
+      return callback({ cancel: false });
+    }
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
     delete headers['dnt'];
 
-    headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
-    headers['sec-ch-ua-mobile'] = '?0';
-    headers['sec-ch-ua-platform'] = '"Windows"';
-    headers['sec-fetch-site'] = headers['sec-fetch-site'] || 'none';
-    headers['sec-fetch-mode'] = headers['sec-fetch-mode'] || 'navigate';
-    headers['sec-fetch-user'] = headers['sec-fetch-user'] || '?1';
-    headers['sec-fetch-dest'] = headers['sec-fetch-dest'] || 'document';
-    headers['upgrade-insecure-requests'] = '1';
-
-    // Accept language
-    headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
-
-    // CLOUDFLARE BYPASS: Essential headers
-    headers['accept'] = headers['accept'] || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
-    headers['accept-encoding'] = 'gzip, deflate, br';
-    headers['cache-control'] = 'max-age=0';
-    headers['pragma'] = 'no-cache';
-    headers['referer'] = headers['referer'] || 'https://www.google.com/';
-    headers['x-forwarded-for'] = '127.0.0.1';
-    headers['user-agent'] = userAgent;
+    // User-Agent for better compatibility
+    if (headers['user-agent']) delete headers['user-agent'];
+    headers['User-Agent'] = userAgent;
 
     callback({ requestHeaders: headers });
   });
@@ -337,7 +321,6 @@ app.whenReady().then(() => {
 
   // CRITICAL: Add Chrome flags to appear more like real Chrome
   app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
-  app.commandLine.appendSwitch('disable-features', 'IsolateOrigins,site-per-process');
 
   createWindow();
 

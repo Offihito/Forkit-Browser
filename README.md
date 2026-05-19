@@ -29,3 +29,7 @@ Many countries and ISPs now use advanced DPI to:
 - Identify and block privacy tools in real time
 
 Forkit Browser makes your traffic look like a completely normal, up-to-date Chrome/Edge/Firefox session from a random legitimate user – even when you visit blocked domains.
+
+## Known Issues
+- The download manager is not working correctly.
+- Cannot enter or bypass Cloudflare protected websites.

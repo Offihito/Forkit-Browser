@@ -654,7 +654,7 @@
     const cleanupInterval = setInterval(cleanup, 60000);
     // Overlay scan every 30s (down from 5s) - most overlays are caught immediately by observer
     const overlayInterval = setInterval(scanOverlays, 30000);
-    
+
     // Clear intervals on page unload/navigation
     window.addEventListener('beforeunload', () => {
       clearInterval(cleanupInterval);

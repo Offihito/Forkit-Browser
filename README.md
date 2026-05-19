@@ -1,5 +1,6 @@
 # Forkit Browser 
-Readme
+
+> **⚠️ DEPRECATED:** This project is deprecated and is no longer being developed. In the future, we will create a better version of it, so stay tuned!
 
 ## What is Forkit Browser?
 Forkit Browser is a privacy-focused, portable Chromium-based browser modified specifically to bypass Deep Packet Inspection (DPI) systems used by ISPs and governments to detect and block encrypted traffic (SNI-based blocking, TLS fingerprinting, etc.).

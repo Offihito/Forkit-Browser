@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Forkit",
+  "version": "1.3.0",
+  "identifier": "com.offihito.forkit",
+  "build": {
+    "frontendDist": "../Files"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "../build/icon.png",
+      "../build/icon.ico"
+    ]
+  }
+}

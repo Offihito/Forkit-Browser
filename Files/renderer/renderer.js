@@ -1,3 +1,5 @@
+import { initTauriWindowAPI, isOverlayMode } from "./tauri/tauriBridge.js";
+import { initTauriContextMenu } from "./contextMenu/tauriContextMenu.js";
 import { createTab } from "./tabs/tabManager.js";
 import { makeTabsDraggable, updateActiveTabHighlight } from "./tabs/tabDrag.js";
 import { initIPC } from "./ipc/ipcHandlers.js";
@@ -7,6 +9,8 @@ import { initDownloadManager } from "./downloads/downloadManager.js";
 import { startDownload } from "./downloads/downloadManager.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initTauriWindowAPI();
+  initTauriContextMenu();
   console.log("windowAPI working.");
   // diagnostic ping
   window.windowAPI?.ping();
@@ -71,8 +75,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   // ========== END WEBVIEW DOWNLOAD LISTENER ==========
 
-  // FIRST TAB
-  createTab('newtab.html');
+  // FIRST TAB (only in main UI mode, not overlay webview)
+  if (!isOverlayMode()) {
+    let startupUrls = [];
+    if (window.__TAURI__?.core) {
+      try {
+        startupUrls = await window.__TAURI__.core.invoke('get_startup_urls');
+      } catch {}
+    }
+    if (Array.isArray(startupUrls) && startupUrls.length > 0) {
+      for (const u of startupUrls) createTab(u);
+    } else {
+      createTab('newtab.html');
+    }
+  }
 
   setTimeout(() => {
     makeTabsDraggable();

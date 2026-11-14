@@ -6,6 +6,10 @@
   "homepage": "./",
   "scripts": {
     "start": "electron main.js --no-sandbox",
+    "tauri:dev": "cargo run --manifest-path src-tauri/Cargo.toml",
+    "tauri:build": "cargo build --release --manifest-path src-tauri/Cargo.toml",
+    "package:linux": "bash scripts/package-linux.sh",
+    "bench:ram": "node scripts/ram-benchmark.mjs",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",

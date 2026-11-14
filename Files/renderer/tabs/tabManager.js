@@ -5,20 +5,161 @@ import { updateTabTitle } from "../ui/helpers.js";
 import { updateHistoryDropdown } from "../ui/historyUI.js";
 import { saveTabHistory, saveGlobalHistory } from "../history/globalHistory.js";
 import { userAgent } from "../env/userAgent.js";
+import { isTauriEnv, getWebviewBounds } from "../tauri/tauriBridge.js";
+
+let tauriTabListenersInitialized = false;
+
+function ensureTauriTabListeners() {
+  if (!isTauriEnv() || tauriTabListenersInitialized) return;
+  tauriTabListenersInitialized = true;
+
+  const { listen } = window.__TAURI__.event;
+  const { invoke } = window.__TAURI__.core;
+
+  listen('tab-loading-started', ({ payload }) => {
+    const tab = state.tabs.find((t) => t.tabId === payload.tabId);
+    if (!tab) return;
+    tab.isLoading = true;
+    updateTabTitle(tab, 'Loading...');
+  });
+
+  listen('tab-loaded', ({ payload }) => {
+    const tab = state.tabs.find((t) => t.tabId === payload.tabId);
+    if (!tab) return;
+    tab.isLoading = false;
+    const currentUrl = payload.url || tab.url;
+
+    if (currentUrl.includes('newtab.html')) {
+      invoke('eval_tab_js', {
+        tabId: tab.tabId,
+        script: `window.postMessage({ type: 'history-data', history: ${JSON.stringify(state.globalHistory.slice(-24))} }, '*');`,
+      }).catch(() => {});
+    }
+
+    const title = tab.title || 'Untitled page';
+    if (!tab.isNavigating) {
+      if (tab.historyIndex < tab.history.length - 1) {
+        tab.history = tab.history.slice(0, tab.historyIndex + 1);
+      }
+      const lastEntry = tab.history[tab.history.length - 1];
+      if (!lastEntry || lastEntry.url !== currentUrl) {
+        const newEntry = {
+          url: currentUrl,
+          title,
+          favicon: `https://www.google.com/s2/favicons?domain=${currentUrl}&sz=64`,
+          time: new Date(),
+        };
+        tab.history.push(newEntry);
+        tab.historyIndex = tab.history.length - 1;
+
+        const lastGlobal = state.globalHistory[state.globalHistory.length - 1];
+        if (!lastGlobal || lastGlobal.url !== currentUrl || lastGlobal.tabId !== tab.tabId) {
+          state.globalHistory.push({
+            url: currentUrl,
+            title,
+            favicon: `https://www.google.com/s2/favicons?domain=${currentUrl}&sz=64`,
+            time: new Date(),
+            tabId: tab.tabId,
+          });
+          saveGlobalHistory();
+        }
+      } else {
+        lastEntry.title = title;
+        lastEntry.time = new Date();
+      }
+    } else {
+      if (tab.history[tab.historyIndex]) {
+        tab.history[tab.historyIndex].title = title;
+      }
+      tab.isNavigating = false;
+    }
+
+    tab.url = currentUrl;
+    if (tab === state.activeTab) {
+      dom.addressInput.value = currentUrl.includes('newtab.html') ? '' : currentUrl;
+      updateHistoryDropdown();
+    }
+    updateTabTitle(tab, title);
+    const img = tab.tabElement.querySelector('.tab-favicon');
+    if (img) {
+      img.src = currentUrl.includes('newtab.html')
+        ? 'icon.png'
+        : `https://www.google.com/s2/favicons?domain=${currentUrl}&sz=32`;
+    }
+    saveTabHistory(tab);
+  });
+
+  listen('tab-title-changed', ({ payload }) => {
+    const tab = state.tabs.find((t) => t.tabId === payload.tabId);
+    if (!tab) return;
+    const title = payload.title || 'Untitled Page';
+    tab.title = title;
+    updateTabTitle(tab, title);
+    if (tab.history[tab.historyIndex]) {
+      tab.history[tab.historyIndex].title = title;
+      saveTabHistory(tab);
+    }
+  });
+
+  listen('tab-new-window', ({ payload }) => {
+    const tab = state.tabs.find((t) => t.tabId === payload.tabId);
+    const url = payload.url;
+    if (!url) return;
+    const downloadExtensions = [
+      '.pdf', '.zip', '.rar', '.7z', '.tar', '.gz',
+      '.exe', '.dmg', '.pkg', '.deb', '.rpm',
+      '.mp3', '.mp4', '.avi', '.mkv', '.mov', '.flv',
+      '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+      '.iso', '.apk', '.ipa',
+    ];
+    if (downloadExtensions.some((ext) => url.toLowerCase().includes(ext))) {
+      import("../downloads/downloadManager.js").then(({ startDownload }) => {
+        const fileName = url.split('/').pop().split('?')[0];
+        startDownload(url, fileName);
+      });
+    } else if (tab) {
+      tab.webview.loadURL(url);
+    } else {
+      createTab(url);
+    }
+  });
+}
+
+function createTauriWebviewProxy(tabId, initialUrl, tabRef) {
+  const { invoke } = window.__TAURI__.core;
+  return {
+    classList: { add: () => {}, remove: () => {} },
+    loadURL: (targetUrl) => {
+      tabRef.url = targetUrl;
+      invoke('navigate_tab', { tabId, url: targetUrl }).catch((e) => console.error(e));
+    },
+    reload: () => invoke('reload_tab', { tabId }).catch((e) => console.error(e)),
+    getURL: () => tabRef.url || initialUrl,
+    getTitle: () => tabRef.title || 'New Tab',
+    executeJavaScript: (script) => invoke('eval_tab_js', { tabId, script }),
+    openDevTools: () => invoke('toggle_devtools_tab', { tabId }).catch(() => {}),
+    closeDevTools: () => invoke('toggle_devtools_tab', { tabId }).catch(() => {}),
+    isDevToolsOpened: () => false,
+    print: () => invoke('print_tab', { tabId }).catch(() => {}),
+    paste: () => invoke('eval_tab_js', { tabId, script: "document.execCommand('paste')" }).catch(() => {}),
+    cut: () => invoke('eval_tab_js', { tabId, script: "document.execCommand('cut')" }).catch(() => {}),
+    setUserAgent: () => {},
+    remove: () => invoke('close_tab_webview', { tabId }).catch(() => {}),
+  };
+}
 
 export function createTab(url = "newtab.html") {
-  const webview = document.createElement('webview');
-  webview.src = url;
-  webview.partition = 'persist:browser';
-  webview.classList.add('webview');
-  dom.webviewContainer.appendChild(webview);
+  ensureTauriTabListeners();
 
   const tabId = ++state.tabIdCounter;
 
+  const initialFavicon = url.includes('newtab.html')
+    ? 'icon.png'
+    : `https://www.google.com/s2/favicons?domain=${url}&sz=32`;
   const tabElement = document.createElement('div');
   tabElement.className = 'tab';
   tabElement.innerHTML = `
-    <img class="tab-favicon" src="https://www.google.com/s2/favicons?domain=${url}&sz=32" alt="">
+    <img class="tab-favicon" src="${initialFavicon}" alt="">
     <span class="tab-title">New Tab</span>
     <span class="tab-close">×</span>
   `;
@@ -27,10 +168,51 @@ export function createTab(url = "newtab.html") {
   const history = [{
     url,
     title: 'New Tab',
-    favicon: `https://www.google.com/s2/favicons?domain=${url}&sz=32`,
+    favicon: initialFavicon,
     time: new Date()
   }];
   let historyIndex = 0;
+
+  if (isTauriEnv()) {
+    const tab = {
+      webview: null,
+      tabElement,
+      url,
+      title: 'New Tab',
+      history,
+      historyIndex,
+      tabId,
+      isNavigating: false,
+      isLoading: false,
+    };
+    tab.webview = createTauriWebviewProxy(tabId, url, tab);
+
+    tabElement.addEventListener('click', (e) => {
+      if (e.target.classList.contains('tab-close')) {
+        closeTab(tab);
+      } else {
+        switchTab(tab);
+      }
+    });
+
+    state.tabs.push(tab);
+    window.__TAURI__.core
+      .invoke('create_tab_webview', { tabId, url, bounds: getWebviewBounds() })
+      .catch((err) => console.error('create_tab_webview error:', err));
+
+    switchTab(tab, true);
+    setTimeout(() => {
+      makeTabsDraggable();
+      updateActiveTabHighlight();
+    }, 100);
+    return tab;
+  }
+
+  const webview = document.createElement('webview');
+  webview.src = url;
+  webview.partition = 'persist:browser';
+  webview.classList.add('webview');
+  dom.webviewContainer.appendChild(webview);
 
   const tab = { 
     webview, 
@@ -213,7 +395,7 @@ export function createTab(url = "newtab.html") {
   return tab;
 }
 
-export function switchTab(tab) {
+export function switchTab(tab, skipBackendSwitch = false) {
   if (state.activeTab) {
     state.activeTab.webview.classList.remove('active');
     state.activeTab.tabElement.classList.remove('active');
@@ -223,7 +405,13 @@ export function switchTab(tab) {
   tab.webview.classList.add('active');
   tab.tabElement.classList.add('active');
 
-  dom.addressInput.value = tab.url || '';
+  if (isTauriEnv() && !skipBackendSwitch) {
+    window.__TAURI__.core
+      .invoke('switch_tab_webview', { tabId: tab.tabId, bounds: getWebviewBounds() })
+      .catch((err) => console.error('switch_tab_webview error:', err));
+  }
+
+  dom.addressInput.value = tab.url && !tab.url.includes('newtab.html') ? tab.url : '';
   updateHistoryDropdown();
   updateActiveTabHighlight();
 }

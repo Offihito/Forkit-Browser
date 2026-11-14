@@ -13,20 +13,25 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121212;
-    --surface: #1e1e1e;
-    --on-surface: #e8eaed;
+    --bg: #111115;
+    --surface: #1b1b22;
+    --header-bg: #131318;
+    --on-surface: #eceef4;
     --primary: #8ab4f8;
     --primary-container: #1a3e72;
     --on-primary-container: #d0e2ff;
-    --outline: #303134;
-    --tab-bg: rgba(45,45,45,0.9);
-    --tab-inactive: #9aa0a6;
+    --outline: rgba(255,255,255,0.09);
+    --tab-bg: #1b1b22;
+    --tab-inactive: #9499a6;
     --error: #e81123;
   }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html.forkit-overlay,
+html.forkit-overlay body {
+  background: transparent !important;
+}
 body {
   font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
   height: 100vh;
@@ -71,110 +76,124 @@ body {
   position: absolute;
   display: flex;
   flex-direction: row-reverse;
-  gap: 2px;
+  gap: 4px;
   -webkit-app-region: no-drag;
-  right: 8px;
+  right: 10px;
   user-select: none;
-  top: 4px;
+  top: 9px;
   z-index: 250;
 }
 
 .window-controls button {
   -webkit-app-region: no-drag;
   background: none;
-  color: white;
+  color: var(--on-surface);
   border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  width: 34px;
+  height: 30px;
+  font-size: 13px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 #min-btn::before {
   content: "";
   display: block;
-  width: 10px;       /* dash uzunluğu */
-  height: 2px;       /* dash kalınlığı */
-  background: white;
+  width: 10px;
+  height: 1.5px;
+  background: var(--on-surface);
   margin: auto;
 }
 #close-btn:hover {
   background: var(--error);
+  color: #fff;
 }
 
 .window-controls button:hover {
-  background: #333;
+  background: rgba(128,128,128,0.18);
 }
 /*Titlebar and window*/
 
 .toolbar {
   background: var(--surface);
   border-bottom: 1px solid var(--outline);
-  padding: 8px 4px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   height: 56px;
 }
 
 button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--on-surface);
-  font-size: 18px;
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 
-button:hover {
-  background: rgba(0,0,0,0.08);
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button:not(:disabled):hover {
+  background: rgba(0,0,0,0.07);
 }
 
 @media (prefers-color-scheme: dark) {
-  button:hover { background: rgba(255,255,255,0.1); }
+  button:not(:disabled):hover { background: rgba(255,255,255,0.09); }
 }
 
 #address {
-  position: absolute;
-  flex: 1;
-  height: 5vh;
-  width: 75vw;
-  bottom: -2.5vh;
+  width: 100%;
+  height: 36px;
   padding: 0 16px;
-  border-radius: 24px;
+  border-radius: 18px;
   border: 1px solid var(--outline);
-  background: var(--surface);
+  background: rgba(0,0,0,0.04);
   color: var(--on-surface);
-  font-size: 15px;
+  font-size: 13.5px;
   outline: none;
-  transition: all 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+@media (prefers-color-scheme: dark) {
+  #address {
+    background: rgba(255,255,255,0.055);
+  }
+  #address:focus {
+    background: rgba(255,255,255,0.08);
+  }
 }
 
 #address:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+  box-shadow: 0 0 0 2px rgba(138,180,248,0.22);
 }
 
 #new-tab {
   background: transparent;
   color: var(--on-surface);
-  width: 32px;
-  height: 32px;
-  top: 4px;
-  font-size: 20px;
-  font-weight: 500;
+  width: 28px;
+  height: 28px;
+  align-self: center;
+  margin-bottom: 4px;
+  font-size: 18px;
+  font-weight: 400;
   flex-shrink: 0;
-  margin-left: 0px;
+  margin-left: 2px;
   margin-right: auto;
   -webkit-app-region: no-drag;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: 7px;
+  transition: background 0.15s ease, transform 0.1s ease;
   z-index: 150;
   position: relative;
   cursor: pointer;
@@ -197,11 +216,11 @@ button:hover {
 }
 
 .tabs-bar {
-  background: var(--surface);
+  background: var(--header-bg, #eceef2);
   display: flex;
   overflow-x: auto;
-  padding: 6px 8px 0px 8px;
-  gap: 6px;
+  padding: 8px 128px 0px 10px;
+  gap: 4px;
   flex-shrink: 0;
   min-height: 48px;
   border-bottom: 1px solid var(--outline);
@@ -217,20 +236,21 @@ button:hover {
 .tab {
   background: transparent;
   color: var(--tab-inactive);
-  padding: 10px 16px;
-  border-radius: 16px 16px 0 0;
-  min-width: 8vw;
-  max-width: 14vw;
+  padding: 8px 12px;
+  border-radius: 10px 10px 0 0;
+  min-width: 130px;
+  max-width: 220px;
+  font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.18s ease, color 0.18s ease;
   cursor: pointer;
   user-select: none;
-  cursor: grab;
   touch-action: pan-x;
   -webkit-app-region: no-drag;
   order: 1;
@@ -246,15 +266,14 @@ button:hover {
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab:hover { background: rgba(255,255,255,0.08); }
+  .tab:hover { background: rgba(255,255,255,0.06); }
 }
 
 .tab.active {
   background: var(--tab-bg);
   color: var(--on-surface);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-  backdrop-filter: blur(20px);
-  opacity: 0.8;
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.18);
+  opacity: 1;
   -webkit-app-region: no-drag;
 }
 
@@ -262,9 +281,9 @@ button:hover {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
   background: var(--primary);
   border-radius: 2px 2px 0 0;
 }
@@ -353,6 +372,8 @@ webview.active {
 #address-wrapper {
   position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 #history-dropdown {

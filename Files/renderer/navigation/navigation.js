@@ -6,7 +6,7 @@ import { clearHistory } from "../history/globalHistory.js";
 
 export function goBack() {
   if (!state.activeTab || state.activeTab.historyIndex <= 0) return;
-
+  
   state.activeTab.isNavigating = true;
   state.activeTab.historyIndex--;
   const entry = state.activeTab.history[state.activeTab.historyIndex];
@@ -18,7 +18,7 @@ export function goBack() {
 
 export function goForward() {
   if (!state.activeTab || state.activeTab.historyIndex >= state.activeTab.history.length - 1) return;
-
+  
   state.activeTab.isNavigating = true;
   state.activeTab.historyIndex++;
   const entry = state.activeTab.history[state.activeTab.historyIndex];
@@ -31,7 +31,7 @@ export function goForward() {
 export function reload() {
   if (state.activeTab) {
     state.activeTab.isNavigating = false;
-    state.activeTab.webview.reload();
+    state.activeTab.webview.reload(); 
   }
 }
 
@@ -41,7 +41,7 @@ export function goHome() {
 
 export function navigateTo(url) {
   if (!url || !state.activeTab) return;
-
+  
   // Download command check
   if (url.startsWith('download:')) {
     const downloadUrl = url.replace('download:', '').trim();
@@ -52,23 +52,12 @@ export function navigateTo(url) {
     dom.addressInput.value = '';
     return;
   }
-
-  // NW.js: open bundled pages under Files/ (e.g. newtab.html) — must run before "https://" heuristics
-  const trimmed = url.trim();
-  const localFileUrl = window.windowAPI?.resolveLocalAppPageUrl?.(trimmed);
-  if (localFileUrl) {
-    state.activeTab.isNavigating = false;
-    state.activeTab.webview.loadURL(localFileUrl);
-    dom.addressInput.value = window.windowAPI?.fileUrlToDisplayPath?.(localFileUrl) || trimmed;
-    dom.historyDropdown.style.display = 'none';
-    return;
-  }
-
+  
   state.activeTab.isNavigating = false;
-
+  
   let displayUrl = url;
   let actualUrl = url;
-
+  
   if (!/^https?:\/\//i.test(url)) {
     if (url.includes('.') && !url.includes(' ')) {
       actualUrl = 'https://' + url;
@@ -79,7 +68,7 @@ export function navigateTo(url) {
       state.activeTab.searchTerm = url; // Arama terimini tab'a kaydet
     }
   }
-
+  
   state.activeTab.webview.loadURL(actualUrl);
   dom.addressInput.value = displayUrl;
   dom.historyDropdown.style.display = 'none';
@@ -91,7 +80,7 @@ export function updateNavigationButtons() {
     dom.forwardBtn.disabled = true;
     return;
   }
-
+  
   dom.backBtn.disabled = state.activeTab.historyIndex <= 0;
   dom.forwardBtn.disabled = state.activeTab.historyIndex >= state.activeTab.history.length - 1;
 }
@@ -114,16 +103,6 @@ export function initNavigation(createTabFn) {
       updateHistoryDropdown();
       dom.historyDropdown.style.display = 'block';
     }
-  });
-
-  // Handle focus loss, especially to webviews/iframes that absorb clicks
-  dom.addressInput.addEventListener('blur', () => {
-    setTimeout(() => {
-      const active = document.activeElement;
-      if (active && (active.tagName === 'WEBVIEW' || active.tagName === 'IFRAME')) {
-        dom.historyDropdown.style.display = 'none';
-      }
-    }, 10);
   });
 
   document.addEventListener('click', (e) => {

@@ -222,35 +222,24 @@ if (window.parent !== window) {
   window.parent.postMessage({ type: 'request-history' }, '*');
 }
 
-// Navigasyon yardımcısı: iframe içindeysek parent'a mesaj gönder, değilse doğrudan git
-function doNavigate(url) {
-  if (window.parent && window.parent !== window) {
-    // iframe içindeyiz — parent tabManager'a navigasyon isteği gönder
-    window.parent.postMessage({ type: 'navigate-url', url: url }, '*');
-  } else {
-    // Doğrudan webview veya bağımsız pencere
-    window.location.href = url;
-  }
-}
-
 // Arama işlevi
 function handleSearch(e) {
   e.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
   if (query) {
     if (query.startsWith('http://') || query.startsWith('https://')) {
-      doNavigate(query);
+      window.location.href = query;
     } else if (query.includes('.') && !query.includes(' ')) {
-      doNavigate('https://' + query);
+      window.location.href = 'https://' + query;
     } else {
-      doNavigate('https://www.google.com/search?q=' + encodeURIComponent(query));
+      window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
     }
   }
 }
 
 // Navigasyon
 function navigate(url) {
-  doNavigate(url);
+  window.location.href = url;
 }
 
 // Enter tuşu ile arama

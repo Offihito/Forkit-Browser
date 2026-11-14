@@ -16,77 +16,63 @@ export function initIPC() {
         case 'create-tab':
           if (data.url) createTab(data.url);
           break;
-
+        
         case 'download-link':
-          // SECURITY: Validate URL and sanitize filename to prevent path traversal
-          let dlUrl = data.url;
-          try {
-            // Validate it's a proper URL
-            new URL(dlUrl);
-          } catch (err) {
-            console.error('Invalid URL for download:', err);
-            break;
-          }
-          // Extract and sanitize filename
-          let fileName = dlUrl.split('/').pop().split('?')[0] || 'download';
-          // Remove path traversal attempts and invalid characters
-          fileName = fileName.replace(/\.\.\/|\.\.\\|[<>:"|?*]/g, '_');
-          // Ensure it has a reasonable length and extension
-          if (fileName.length > 255) fileName = fileName.substring(0, 240);
-          startDownload(dlUrl, fileName);
+          const fileName = data.url.split('/').pop().split('?')[0] || 'download';
+          startDownload(data.url, fileName);
           break;
-
+        
         case 'download-image':
           // Image download - send to download manager
           startDownload(data.url, data.fileName || 'image.png');
           break;
-
+        
         case 'download-page':
           // Page download - get HTML and send to download manager
           try {
             const url = tab.webview.getURL();
             const title = tab.webview.getTitle() || 'page';
             const html = await tab.webview.executeJavaScript('document.documentElement.outerHTML');
-
+            
             // Create blob URL for HTML
             const blob = new Blob([html], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
-
+            
             // Sanitize filename
             const safeName = title.replace(/[<>:"/\\|?*]/g, '_') + '.html';
             startDownload(blobUrl, safeName);
-
+            
             // Clean up blob URL after a delay
             setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
           } catch (err) {
             console.error('Error downloading page:', err);
           }
           break;
-
+        
         case 'paste':
           tab.webview.paste();
           break;
-
+        
         case 'cut':
           tab.webview.cut();
           break;
-
+        
         case 'back':
           goBack();
           break;
-
+        
         case 'forward':
           goForward();
           break;
-
+        
         case 'reload':
           reload();
           break;
-
+        
         case 'print':
           tab.webview.print();
           break;
-
+        
         case 'view-source':
           tab.webview.executeJavaScript('document.documentElement.outerHTML')
             .then(html => {
@@ -95,11 +81,15 @@ export function initIPC() {
               createTab(url);
             });
           break;
-
+        
         case 'inspect':
-          window.windowAPI?.showDevTools();
+          if (tab.webview.isDevToolsOpened()) {
+            tab.webview.closeDevTools();
+          } else {
+            tab.webview.openDevTools();
+          }
           break;
-
+        
         default:
           console.warn('Unknown context menu action:', data.action);
       }

@@ -20,17 +20,7 @@ try {
 
 // CRITICAL: Use Chrome's exact user agent - Google checks this
 const chromeVersion = process.versions.chrome;
-let osPlatform = '"Windows"';
-let osString = 'Windows NT 10.0; Win64; x64';
-if (process.platform === 'darwin') {
-  osPlatform = '"macOS"';
-  osString = 'Macintosh; Intel Mac OS X 10_15_7';
-} else if (process.platform === 'linux') {
-  osPlatform = '"Linux"';
-  osString = 'X11; Linux x86_64';
-}
-
-const userAgent = `Mozilla/5.0 (${osString}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
 app.userAgentFallback = userAgent;
 
 // SECURITY: Remove Electron from user agent completely
@@ -68,7 +58,7 @@ function createWindow() {
 
   // Session settings
   const ses = win.webContents.session;
-
+  
   // Clear any proxy (direct connection)
   ses.setProxy({ mode: 'direct' });
 
@@ -77,7 +67,7 @@ function createWindow() {
 
   // SECURITY: Set proper permissions
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal', 'download'];
+    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal'];
     if (allowedPermissions.includes(permission)) {
       callback(true);
     } else {
@@ -85,49 +75,40 @@ function createWindow() {
     }
   });
 
-  // CRITICAL: Enhanced header manipulation for Google & Cloudflare Bypass
+  // CRITICAL: Enhanced header manipulation for Google
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
-    const url = details.url || '';
     
-    // CLOUDFLARE BYPASS: Do not touch headers natively, prevents HTTP/2 header re-ordering
-    if (url.includes('cloudflare.com') || url.includes('challenges.cloudflare.com')) {
-      return callback({ cancel: false });
-    }
-
     // Remove Electron-specific headers that Google detects
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
-    delete headers['dnt']; // Remove Do Not Track header
-
-    // User-Agent for better compatibility
-    if (headers['user-agent']) delete headers['user-agent'];
-    headers['User-Agent'] = userAgent;
-
+    
+    // Set Chrome-like headers
+    headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
+    headers['sec-ch-ua-mobile'] = '?0';
+    headers['sec-ch-ua-platform'] = '"Windows"';
+    headers['sec-fetch-site'] = headers['sec-fetch-site'] || 'none';
+    headers['sec-fetch-mode'] = headers['sec-fetch-mode'] || 'navigate';
+    headers['sec-fetch-user'] = headers['sec-fetch-user'] || '?1';
+    headers['sec-fetch-dest'] = headers['sec-fetch-dest'] || 'document';
+    headers['upgrade-insecure-requests'] = '1';
+    
+    // Accept language
+    headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
+    
     callback({ requestHeaders: headers });
   });
 
   // AD BLOCKER: Block requests
   ses.webRequest.onBeforeRequest((details, callback) => {
-    const url = details.url;
-    
-    // CLOUDFLARE: Never block
-    const cloudflarePatterns = ['cloudflare.com', 'cf-cdn.com', 'cdn-cgi', 'challenges.cloudflare.com', 'cflare.com'];
-    for (const pattern of cloudflarePatterns) {
-      if (url.includes(pattern)) {
-        callback({ cancel: false });
-        return;
-      }
-    }
-    
     // Ana sayfa ve navigation isteklerini asla engelleme
     if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
       callback({ cancel: false });
       return;
     }
-
-    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType, details.referrer || details.documentUrl || '');
-
+    
+    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType);
+    
     if (shouldBlock) {
       console.log('🚫 Blocked:', details.resourceType, details.url);
       callback({ cancel: true });
@@ -139,7 +120,7 @@ function createWindow() {
   // CRITICAL: Handle response headers
   ses.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders;
-
+    
     // Allow necessary cookies and storage
     if (headers['set-cookie']) {
       // Google needs these cookies
@@ -147,63 +128,52 @@ function createWindow() {
         return cookie;
       });
     }
-
+    
     callback({ responseHeaders: headers });
   });
 
   // Webview partition session settings
   const webviewSession = session.fromPartition('persist:browser');
-
+  
   webviewSession.setProxy({ mode: 'direct' });
   webviewSession.setUserAgent(userAgent);
 
   // Set permissions for webview
   webviewSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal', 'download'];
+    const allowedPermissions = ['notifications', 'media', 'geolocation', 'openExternal'];
     callback(allowedPermissions.includes(permission));
   });
 
-  // Apply same header manipulation for webviews (CLOUDFLARE BYPASS)
+  // Apply same header manipulation for webviews
   webviewSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = details.requestHeaders;
-    const url = details.url || '';
-
-    // CLOUDFLARE BYPASS: Do not touch headers natively, prevents HTTP/2 header re-ordering
-    if (url.includes('cloudflare.com') || url.includes('challenges.cloudflare.com')) {
-      return callback({ cancel: false });
-    }
+    
     delete headers['Electron'];
     delete headers['X-Devtools-Emulate-Network-Conditions-Client-Id'];
-    delete headers['dnt'];
-
-    // User-Agent for better compatibility
-    if (headers['user-agent']) delete headers['user-agent'];
-    headers['User-Agent'] = userAgent;
-
+    
+    headers['sec-ch-ua'] = `"Chromium";v="${chromeVersion.split('.')[0]}", "Google Chrome";v="${chromeVersion.split('.')[0]}", "Not=A?Brand";v="24"`;
+    headers['sec-ch-ua-mobile'] = '?0';
+    headers['sec-ch-ua-platform'] = '"Windows"';
+    headers['sec-fetch-site'] = headers['sec-fetch-site'] || 'none';
+    headers['sec-fetch-mode'] = headers['sec-fetch-mode'] || 'navigate';
+    headers['sec-fetch-user'] = headers['sec-fetch-user'] || '?1';
+    headers['sec-fetch-dest'] = headers['sec-fetch-dest'] || 'document';
+    headers['upgrade-insecure-requests'] = '1';
+    headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
+    
     callback({ requestHeaders: headers });
   });
 
   // AD BLOCKER: Block requests for webviews
   webviewSession.webRequest.onBeforeRequest((details, callback) => {
-    const url = details.url;
-    
-    // CLOUDFLARE: Never block
-    const cloudflarePatterns = ['cloudflare.com', 'cf-cdn.com', 'cdn-cgi', 'challenges.cloudflare.com', 'cflare.com'];
-    for (const pattern of cloudflarePatterns) {
-      if (url.includes(pattern)) {
-        callback({ cancel: false });
-        return;
-      }
-    }
-    
     // Ana sayfa ve navigation isteklerini asla engelleme
     if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
       callback({ cancel: false });
       return;
     }
-
-    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType, details.referrer || details.documentUrl || '');
-
+    
+    const shouldBlock = adBlocker.shouldBlock(details.url, details.resourceType);
+    
     if (shouldBlock) {
       console.log('🚫 Blocked (webview):', details.resourceType, details.url);
       callback({ cancel: true });
@@ -219,27 +189,12 @@ function createWindow() {
   // Download handler for webview
   webviewSession.on('will-download', (event, item, webContents) => {
     event.preventDefault();
-
+    
     const url = item.getURL();
     const filename = item.getFilename();
-
+    
     console.log('Download intercepted:', { url, filename });
-
-    win.webContents.send('start-download-from-webview', {
-      url: url,
-      filename: filename
-    });
-  });
-
-  // Also handle main window downloads
-  win.webContents.session.on('will-download', (event, item, webContents) => {
-    event.preventDefault();
-
-    const url = item.getURL();
-    const filename = item.getFilename();
-
-    console.log('Download intercepted from main window:', { url, filename });
-
+    
     win.webContents.send('start-download-from-webview', {
       url: url,
       filename: filename
@@ -311,17 +266,16 @@ app.whenReady().then(() => {
     ]
   });
 
-  // SECURITY: Certificate error bypass REMOVED
-  // Allowing this enables MITM attacks and is NEVER safe, even in development
-  // If testing self-signed certs is needed, use a proper test CA instead
-  // if (debug_mode) {
-  //   // DANGER: This would enable MITM attacks - DO NOT USE
-  //   // app.commandLine.appendSwitch('ignore-certificate-errors');
-  // }
+  // IMPORTANT: Only use these in development, not production
+  // Google may detect these as suspicious
+  if (debug_mode) {
+    app.commandLine.appendSwitch('ignore-certificate-errors');
+  }
 
   // CRITICAL: Add Chrome flags to appear more like real Chrome
   app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
-
+  app.commandLine.appendSwitch('disable-features', 'IsolateOrigins,site-per-process');
+  
   createWindow();
 
   app.on('activate', () => {
@@ -492,7 +446,7 @@ ipcMain.on('download-item', (event, downloadUrl, fileName) => {
   const { dialog } = require('electron');
   const https = require('https');
   const http = require('http');
-
+  
   dialog.showSaveDialog({
     defaultPath: fileName || 'download',
     properties: ['createDirectory']
@@ -500,36 +454,36 @@ ipcMain.on('download-item', (event, downloadUrl, fileName) => {
     if (!result.canceled && result.filePath) {
       const protocol = downloadUrl.startsWith('https') ? https : http;
       const file = fs.createWriteStream(result.filePath);
-
+      
       protocol.get(downloadUrl, (response) => {
         const totalSize = parseInt(response.headers['content-length'], 10);
         let downloaded = 0;
-
+        
         response.on('data', (chunk) => {
           downloaded += chunk.length;
           const progress = totalSize ? (downloaded / totalSize) * 100 : 0;
-          event.sender.send('download-progress', {
+          event.sender.send('download-progress', { 
             fileName: result.filePath.split(/[\\/]/).pop(),
             progress: Math.round(progress),
             downloaded,
             totalSize
           });
         });
-
+        
         response.pipe(file);
-
+        
         file.on('finish', () => {
           file.close();
-          event.sender.send('download-complete', {
+          event.sender.send('download-complete', { 
             fileName: result.filePath.split(/[\\/]/).pop(),
-            filePath: result.filePath
+            filePath: result.filePath 
           });
         });
       }).on('error', (err) => {
-        fs.unlink(result.filePath, () => { });
-        event.sender.send('download-error', {
+        fs.unlink(result.filePath, () => {});
+        event.sender.send('download-error', { 
           fileName: result.filePath.split(/[\\/]/).pop(),
-          error: err.message
+          error: err.message 
         });
       });
     }

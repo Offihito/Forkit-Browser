@@ -1,18 +1,4 @@
 // Settings Modal Functions
-const DEFAULT_LIGHT_BG = 'helpers/light.webp';
-const DEFAULT_DARK_BG = 'helpers/dark.png';
-
-function getDefaultBackgroundUrl() {
-  return document.body.classList.contains("dark") ? DEFAULT_DARK_BG : DEFAULT_LIGHT_BG;
-}
-
-function applyDefaultBackground() {
-  document.body.style.backgroundImage = `url("${getDefaultBackgroundUrl()}")`;
-  document.body.style.backgroundSize = "cover";
-  document.body.style.backgroundPosition = "center";
-  document.body.style.backgroundRepeat = "no-repeat";
-  document.body.style.backgroundAttachment = "fixed";
-}
 
 // Modal açma
 function openSettings() {
@@ -39,17 +25,15 @@ function loadCurrentBackground() {
   try {
     const savedBackground = localStorage.getItem('newtab_background');
     const preview = document.getElementById('backgroundPreview');
-    preview.innerHTML = ''; // Clear existing
     
-    const img = document.createElement('img');
-    img.alt = 'Background Preview';
     if (savedBackground) {
-      img.src = savedBackground;
+      preview.innerHTML = `<img src="${savedBackground}" alt="Background Preview">`;
     } else {
       // Mevcut tema'ya göre default background göster
-      img.src = getDefaultBackgroundUrl();
+      const isDark = document.body.classList.contains('dark');
+      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
+      preview.innerHTML = `<img src="${defaultBg}" alt="Default Background">`;
     }
-    preview.appendChild(img);
   } catch (e) {
     console.log('Error loading background preview:', e);
   }
@@ -85,13 +69,9 @@ function handleBackgroundUpload(event) {
       // Arka planı güncelle
       applyBackground(imageData);
       
-      // Önizlemeyi güncelle - SECURITY: use DOM methods instead of innerHTML
+      // Önizlemeyi güncelle
       const preview = document.getElementById('backgroundPreview');
-      preview.innerHTML = '';
-      const img = document.createElement('img');
-      img.alt = 'Background Preview';
-      img.src = imageData;
-      preview.appendChild(img);
+      preview.innerHTML = `<img src="${imageData}" alt="Background Preview">`;
       
       // Başarı bildirimi (opsiyonel)
       showNotification('Background updated successfully!');
@@ -130,7 +110,10 @@ function resetBackground() {
     localStorage.removeItem('newtab_background');
     
     // Default arka plana dön
-    applyDefaultBackground();
+    const isDark = document.body.classList.contains('dark');
+    const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
+    
+    document.body.style.backgroundImage = `url("${defaultBg}")`;
     
     // Önizlemeyi güncelle
     loadCurrentBackground();
@@ -177,8 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedBackground = localStorage.getItem('newtab_background');
     if (savedBackground) {
       applyBackground(savedBackground);
-    } else {
-      applyDefaultBackground();
     }
   } catch (e) {
     console.log('Error loading saved background:', e);
@@ -194,7 +175,9 @@ window.toggleTheme = function() {
   try {
     const savedBackground = localStorage.getItem('newtab_background');
     if (!savedBackground) {
-      applyDefaultBackground();
+      const isDark = document.body.classList.contains('dark');
+      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
+      document.body.style.backgroundImage = `url("${defaultBg}")`;
     }
   } catch (e) {
     console.log('Error updating background on theme change:', e);

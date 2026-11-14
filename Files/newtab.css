@@ -14,8 +14,6 @@
       --text-light: #2c3e50;
       --text-dark: #e0e0e0;
       --shadow: rgba(0, 0, 0, 0.1);
-      --default-bg-light-url: url("helpers/light.webp");
-      --default-bg-dark-url: url("helpers/dark.webp");
     }
 
     body {
@@ -25,28 +23,14 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background-color: var(--bg-light);
-      background-image:
-        var(--default-bg-light-url),
-        linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
-      background-size: cover, cover;
-      background-position: center, center;
-      background-repeat: no-repeat, no-repeat;
-      background-attachment: fixed, fixed;
+      background-image: url("helpers/light.webp");
       color: var(--text-light);
       padding: 20px;
       transition: all 0.3s ease;
     }
 
     body.dark {
-    background-color: var(--bg-dark);
-    background-image:
-      var(--default-bg-dark-url),
-      linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-    background-size: cover, cover;
-    background-position: center, center;
-    background-repeat: no-repeat, no-repeat;
-    background-attachment: fixed, fixed;
+    background-image: url("helpers/dark.png");
     color: var(--text-dark);
     }
 

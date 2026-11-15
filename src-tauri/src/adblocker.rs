@@ -35,6 +35,77 @@ pub struct AdBlocker {
     pub allow_patterns: Vec<String>,
     pub cosmetic_count: usize,
     pub data_dir: PathBuf,
+    unsaved_blocks: u64,
+}
+
+const YOUTUBE_AD_PATTERNS: &[&str] = &[
+    "doubleclick.net",
+    "googlesyndication.com",
+    "googleadservices.com",
+    "googleads.g.doubleclick.net",
+    "static.doubleclick.net",
+    "advertising.youtube.com",
+    "ads.google.com",
+    "ad.youtube.com",
+    "adservice.google.com",
+    "r.googleyoutube.com",
+    "tracking.google.com",
+    "cm.smartadserver.com",
+    "tds.gumgum.com",
+    "youtube.com/pagead/",
+    "google.com/pagead/",
+    "youtube.com/api/stats/ads",
+    "youtube.com/api/stats/atr",
+    "youtube.com/get_midroll_",
+    "youtube.com/youtubei/v1/log_event",
+    "youtube.com/csi_204",
+    "youtubei/v1/player/ad_unit",
+    "youtube.com/youtubei/v1/browse?includeadData",
+    "/adtag/",
+    "/ad_tag/",
+    "googleplacementinterstitial",
+];
+
+const YOUTUBE_WHITELIST: &[&str] = &[
+    "youtube.com/api/timedtext",
+    "youtube.com/youtubei/v1/player",
+    "youtube.com/s/player/",
+    "youtube.com/iframe_api",
+    "ytimg.com",
+    "ggpht.com",
+    "gstatic.com/youtube",
+    "youtube.com/youtubei/v1/browse",
+    "youtube.com/youtubei/v1/search",
+    "youtube.com/youtubei/v1/get_video_details",
+    "googlevideo.com/videoplayback",
+];
+
+const DEFAULT_AD_DOMAINS: &[&str] = &[
+    "doubleclick.net",
+    "googlesyndication.com",
+    "googleadservices.com",
+    "google-analytics.com",
+    "googletagmanager.com",
+    "facebook.com/tr",
+    "facebook.net",
+    "scorecardresearch.com",
+    "adnxs.com",
+    "advertising.com",
+    "criteo.com",
+    "outbrain.com",
+    "taboola.com",
+    "ads-twitter.com",
+    "analytics.twitter.com",
+    "ads.yahoo.com",
+    "bat.bing.com",
+];
+
+impl Drop for AdBlocker {
+    fn drop(&mut self) {
+        if self.unsaved_blocks > 0 {
+            self.save_stats();
+        }
+    }
 }
 
 impl AdBlocker {
@@ -47,10 +118,20 @@ impl AdBlocker {
             allow_patterns: Vec::new(),
             cosmetic_count: 0,
             data_dir,
+            unsaved_blocks: 0,
         };
         blocker.load_stats();
         blocker.load_filters();
         blocker
+    }
+
+    fn record_block_hit(&mut self) {
+        self.stats.blocked += 1;
+        self.unsaved_blocks += 1;
+        if self.unsaved_blocks >= 25 {
+            self.unsaved_blocks = 0;
+            self.save_stats();
+        }
     }
 
     fn filter_list_path(&self) -> PathBuf {
@@ -132,7 +213,11 @@ impl AdBlocker {
         if !self.is_enabled {
             return false;
         }
-        let lower = url.to_lowercase();
+        let lower: std::borrow::Cow<'_, str> = if url.bytes().any(|b| b.is_ascii_uppercase()) {
+            std::borrow::Cow::Owned(url.to_ascii_lowercase())
+        } else {
+            std::borrow::Cow::Borrowed(url)
+        };
 
         for allow in &self.allow_patterns {
             if !allow.is_empty() && lower.contains(allow) {
@@ -141,88 +226,90 @@ impl AdBlocker {
             }
         }
 
-        let youtube_ad_patterns = [
-            "doubleclick.net",
-            "googlesyndication.com",
-            "googleadservices.com",
-            "googleads.g.doubleclick.net",
-            "static.doubleclick.net",
-            "advertising.youtube.com",
-            "ads.google.com",
-            "ad.youtube.com",
-            "adservice.google.com",
-            "r.googleyoutube.com",
-            "tracking.google.com",
-            "cm.smartadserver.com",
-            "tds.gumgum.com",
-            "youtube.com/pagead/",
-            "google.com/pagead/",
-            "youtube.com/api/stats/ads",
-            "youtube.com/api/stats/atr",
-            "youtube.com/get_midroll_",
-            "youtube.com/youtubei/v1/log_event",
-            "youtube.com/csi_204",
-            "youtubei/v1/player/ad_unit",
-            "youtube.com/youtubei/v1/browse?includeadData",
-            "/adtag/",
-            "/ad_tag/",
-            "googleplacementinterstitial",
-        ];
-
-        for pat in &youtube_ad_patterns {
+        for pat in YOUTUBE_AD_PATTERNS {
             if lower.contains(pat) {
-                self.stats.blocked += 1;
-                self.save_stats();
+                self.record_block_hit();
                 return true;
             }
         }
 
-        let youtube_whitelist = [
-            "youtube.com/api/timedtext",
-            "youtube.com/youtubei/v1/player",
-            "youtube.com/s/player/",
-            "youtube.com/iframe_api",
-            "ytimg.com",
-            "ggpht.com",
-            "gstatic.com/youtube",
-            "youtube.com/youtubei/v1/browse",
-            "youtube.com/youtubei/v1/search",
-            "youtube.com/youtubei/v1/get_video_details",
-            "googlevideo.com/videoplayback",
-        ];
-
-        for domain in &youtube_whitelist {
+        for domain in YOUTUBE_WHITELIST {
             if lower.contains(domain) {
                 return false;
             }
         }
 
-        let default_ad_domains = [
-            "doubleclick.net",
-            "googlesyndication.com",
-            "googleadservices.com",
-            "google-analytics.com",
-            "facebook.com/tr",
-            "facebook.net",
-            "scorecardresearch.com",
-            "adnxs.com",
-            "advertising.com",
-            "criteo.com",
-            "outbrain.com",
-            "taboola.com",
-            "ads-twitter.com",
-            "analytics.twitter.com",
-        ];
-
-        for dom in &default_ad_domains {
+        for dom in DEFAULT_AD_DOMAINS {
             if lower.contains(dom) {
-                self.stats.blocked += 1;
-                self.save_stats();
+                self.record_block_hit();
                 return true;
             }
         }
 
         false
+    }
+
+    fn escape_webkit_regex(pattern: &str) -> String {
+        let mut out = String::with_capacity(pattern.len() + 8);
+        for ch in pattern.chars() {
+            match ch {
+                '.' | '?' | '+' | '*' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|'
+                | '\\' => {
+                    out.push('\\');
+                    out.push(ch);
+                }
+                _ => out.push(ch),
+            }
+        }
+        out
+    }
+
+    pub fn build_webkit_content_blocker_json(&self) -> String {
+        let mut rules: Vec<serde_json::Value> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+
+        let mut push_block = |pat: &str| {
+            let trimmed = pat.trim();
+            if trimmed.len() < 4 || !seen.insert(trimmed.to_string()) {
+                return;
+            }
+            let escaped = Self::escape_webkit_regex(trimmed);
+            rules.push(serde_json::json!({
+                "trigger": { "url-filter": escaped },
+                "action": { "type": "block" }
+            }));
+        };
+
+        for pat in YOUTUBE_AD_PATTERNS {
+            push_block(pat);
+        }
+        for dom in DEFAULT_AD_DOMAINS {
+            push_block(dom);
+        }
+        // Include up to 5000 custom/downloaded network patterns so compilation stays fast.
+        for pat in self.block_patterns.iter().take(5000) {
+            push_block(pat);
+        }
+
+        for dom in YOUTUBE_WHITELIST {
+            let escaped = Self::escape_webkit_regex(dom);
+            rules.push(serde_json::json!({
+                "trigger": { "url-filter": escaped },
+                "action": { "type": "ignore-previous-rules" }
+            }));
+        }
+        for allow in &self.allow_patterns {
+            let trimmed = allow.trim();
+            if trimmed.len() >= 3 {
+                let escaped = Self::escape_webkit_regex(trimmed);
+                rules.push(serde_json::json!({
+                    "trigger": { "url-filter": escaped },
+                    "action": { "type": "ignore-previous-rules" }
+                }));
+            }
+        }
+
+        serde_json::to_string(&rules).unwrap_or_else(|_| "[]".to_string())
     }
 
     pub fn add_custom_filter(&mut self, filter: &str) {
@@ -267,10 +354,18 @@ pub fn get_adblock_stats(state: State<'_, AdBlockerState>) -> AdBlockStats {
 }
 
 #[tauri::command]
-pub fn toggle_adblock(state: State<'_, AdBlockerState>, enabled: bool) -> bool {
+pub fn toggle_adblock(app: AppHandle, state: State<'_, AdBlockerState>, enabled: bool) -> bool {
     let mut guard = state.inner.lock().unwrap();
     guard.is_enabled = enabled;
-    guard.is_enabled
+    if guard.unsaved_blocks > 0 {
+        guard.unsaved_blocks = 0;
+        guard.save_stats();
+    }
+    let is_en = guard.is_enabled;
+    drop(guard);
+    #[cfg(target_os = "linux")]
+    sync_webkit_adblock_enabled(&app, is_en);
+    is_en
 }
 
 #[tauri::command]
@@ -589,6 +684,278 @@ pub const TAB_INIT_SCRIPT: &str = r#"
   }
 })();
 "#;
+
+#[cfg(target_os = "linux")]
+mod webkit_content_blocker {
+    use super::*;
+    use std::cell::{Cell, RefCell};
+    use std::ffi::CString;
+    use webkit2gtk::glib::object::ObjectExt as GlibObjectExt;
+    use webkit2gtk::glib::translate::ToGlibPtr;
+    use webkit2gtk::{ffi, gio, glib, WebViewExt};
+
+    const FILTER_ID: &str = "forkit-adblock";
+
+    struct FilterPtr(*mut ffi::WebKitUserContentFilter);
+
+    impl Drop for FilterPtr {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe { ffi::webkit_user_content_filter_unref(self.0) };
+            }
+        }
+    }
+
+    thread_local! {
+        static COMPILED_FILTER: RefCell<Option<FilterPtr>> = const { RefCell::new(None) };
+        static LIVE_UCMS: RefCell<Vec<glib::WeakRef<webkit2gtk::UserContentManager>>> = const { RefCell::new(Vec::new()) };
+        static INIT_STARTED: Cell<bool> = const { Cell::new(false) };
+        static ADBLOCK_ENABLED: Cell<bool> = const { Cell::new(true) };
+    }
+
+    struct CallbackData {
+        store: *mut ffi::WebKitUserContentFilterStore,
+        json_bytes: Option<Vec<u8>>,
+        hash_path: PathBuf,
+        hash_str: String,
+    }
+
+    fn fnv1a_64(data: &[u8]) -> u64 {
+        let mut h: u64 = 0xcbf29ce484222325;
+        for &b in data {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+        h
+    }
+
+    fn apply_filter_to_all_live(filter: *mut ffi::WebKitUserContentFilter) {
+        LIVE_UCMS.with(|cell| {
+            let mut list = cell.borrow_mut();
+            list.retain(|weak| {
+                if let Some(ucm) = weak.upgrade() {
+                    let ucm_ptr: *mut ffi::WebKitUserContentManager = ucm.to_glib_none().0;
+                    unsafe {
+                        ffi::webkit_user_content_manager_add_filter(ucm_ptr, filter);
+                    }
+                    true
+                } else {
+                    false
+                }
+            });
+        });
+    }
+
+    fn finish_with_filter(filter: *mut ffi::WebKitUserContentFilter) {
+        if filter.is_null() {
+            return;
+        }
+        let enabled = ADBLOCK_ENABLED.with(|c| c.get());
+        if enabled {
+            apply_filter_to_all_live(filter);
+        }
+        COMPILED_FILTER.with(|cell| {
+            *cell.borrow_mut() = Some(FilterPtr(filter));
+        });
+    }
+
+    unsafe extern "C" fn on_save_ready(
+        _source: *mut glib::gobject_ffi::GObject,
+        res: *mut gio::ffi::GAsyncResult,
+        user_data: glib::ffi::gpointer,
+    ) {
+        let data = Box::from_raw(user_data as *mut CallbackData);
+        let mut err: *mut glib::ffi::GError = std::ptr::null_mut();
+        let filter = ffi::webkit_user_content_filter_store_save_finish(data.store, res, &mut err);
+        if !err.is_null() {
+            glib::ffi::g_error_free(err);
+        } else if !filter.is_null() {
+            let _ = fs::write(&data.hash_path, &data.hash_str);
+            finish_with_filter(filter);
+        }
+        glib::gobject_ffi::g_object_unref(data.store as *mut glib::gobject_ffi::GObject);
+    }
+
+    unsafe extern "C" fn on_load_ready(
+        _source: *mut glib::gobject_ffi::GObject,
+        res: *mut gio::ffi::GAsyncResult,
+        user_data: glib::ffi::gpointer,
+    ) {
+        let mut data = Box::from_raw(user_data as *mut CallbackData);
+        let mut err: *mut glib::ffi::GError = std::ptr::null_mut();
+        let filter = ffi::webkit_user_content_filter_store_load_finish(data.store, res, &mut err);
+        if !err.is_null() {
+            glib::ffi::g_error_free(err);
+        }
+        if !filter.is_null() {
+            finish_with_filter(filter);
+            glib::gobject_ffi::g_object_unref(data.store as *mut glib::gobject_ffi::GObject);
+            return;
+        }
+        // Fallback to compiling and saving JSON if cached binary filter wasn't found.
+        if let Some(bytes_vec) = data.json_bytes.take() {
+            let gbytes = glib::Bytes::from_owned(bytes_vec);
+            let c_id = CString::new(FILTER_ID).unwrap();
+            let store = data.store;
+            let raw_ctx = Box::into_raw(data) as glib::ffi::gpointer;
+            ffi::webkit_user_content_filter_store_save(
+                store,
+                c_id.as_ptr(),
+                gbytes.to_glib_none().0,
+                std::ptr::null_mut(),
+                Some(on_save_ready),
+                raw_ctx,
+            );
+        } else {
+            glib::gobject_ffi::g_object_unref(data.store as *mut glib::gobject_ffi::GObject);
+        }
+    }
+
+    pub fn init(app: &AppHandle) {
+        let already = INIT_STARTED.with(|c| {
+            let prev = c.get();
+            c.set(true);
+            prev
+        });
+        if already {
+            return;
+        }
+
+        let Some(ad_state) = app.try_state::<AdBlockerState>() else {
+            return;
+        };
+        let (enabled, data_dir, json) = {
+            let guard = ad_state.inner.lock().unwrap();
+            (
+                guard.is_enabled,
+                guard.data_dir.clone(),
+                guard.build_webkit_content_blocker_json(),
+            )
+        };
+        ADBLOCK_ENABLED.with(|c| c.set(enabled));
+
+        let store_dir = data_dir.join("webkit-filters");
+        let _ = fs::create_dir_all(&store_dir);
+        let hash_path = store_dir.join("forkit-adblock.hash");
+        let hash_str = format!("{:016x}", fnv1a_64(json.as_bytes()));
+        let cached_hash = fs::read_to_string(&hash_path).unwrap_or_default();
+
+        let Ok(c_store_dir) = CString::new(store_dir.to_string_lossy().as_bytes()) else {
+            return;
+        };
+        let c_id = CString::new(FILTER_ID).unwrap();
+
+        unsafe {
+            let store = ffi::webkit_user_content_filter_store_new(c_store_dir.as_ptr());
+            if store.is_null() {
+                return;
+            }
+            if cached_hash.trim() == hash_str {
+                let ctx = Box::new(CallbackData {
+                    store,
+                    json_bytes: Some(json.into_bytes()),
+                    hash_path,
+                    hash_str,
+                });
+                ffi::webkit_user_content_filter_store_load(
+                    store,
+                    c_id.as_ptr(),
+                    std::ptr::null_mut(),
+                    Some(on_load_ready),
+                    Box::into_raw(ctx) as glib::ffi::gpointer,
+                );
+            } else {
+                let gbytes = glib::Bytes::from_owned(json.into_bytes());
+                let ctx = Box::new(CallbackData {
+                    store,
+                    json_bytes: None,
+                    hash_path,
+                    hash_str,
+                });
+                ffi::webkit_user_content_filter_store_save(
+                    store,
+                    c_id.as_ptr(),
+                    gbytes.to_glib_none().0,
+                    std::ptr::null_mut(),
+                    Some(on_save_ready),
+                    Box::into_raw(ctx) as glib::ffi::gpointer,
+                );
+            }
+        }
+    }
+
+    pub fn attach_to_webview(app: &AppHandle, wk: &webkit2gtk::WebView) {
+        let Some(ucm) = wk.user_content_manager() else {
+            return;
+        };
+        LIVE_UCMS.with(|cell| {
+            let mut list = cell.borrow_mut();
+            list.retain(|w| w.upgrade().is_some());
+            list.push(ucm.downgrade());
+        });
+
+        let enabled = ADBLOCK_ENABLED.with(|c| c.get());
+        if enabled {
+            COMPILED_FILTER.with(|cell| {
+                if let Some(ref f) = *cell.borrow() {
+                    let ucm_ptr: *mut ffi::WebKitUserContentManager = ucm.to_glib_none().0;
+                    unsafe {
+                        ffi::webkit_user_content_manager_add_filter(ucm_ptr, f.0);
+                    }
+                }
+            });
+        }
+        init(app);
+    }
+
+    pub fn sync_enabled(app: &AppHandle, enabled: bool) {
+        let _ = app.run_on_main_thread(move || {
+            ADBLOCK_ENABLED.with(|c| c.set(enabled));
+            let c_id = CString::new(FILTER_ID).unwrap();
+            COMPILED_FILTER.with(|filter_cell| {
+                let filter_opt = filter_cell.borrow();
+                LIVE_UCMS.with(|ucms_cell| {
+                    let mut list = ucms_cell.borrow_mut();
+                    list.retain(|weak| {
+                        if let Some(ucm) = weak.upgrade() {
+                            let ucm_ptr: *mut ffi::WebKitUserContentManager = ucm.to_glib_none().0;
+                            unsafe {
+                                if enabled {
+                                    if let Some(ref f) = *filter_opt {
+                                        ffi::webkit_user_content_manager_add_filter(ucm_ptr, f.0);
+                                    }
+                                } else {
+                                    ffi::webkit_user_content_manager_remove_filter_by_id(
+                                        ucm_ptr,
+                                        c_id.as_ptr(),
+                                    );
+                                }
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                });
+            });
+        });
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub fn init_webkit_content_blocker(app: &AppHandle) {
+    webkit_content_blocker::init(app);
+}
+
+#[cfg(target_os = "linux")]
+pub fn attach_adblock_to_webkit(app: &AppHandle, wk: &webkit2gtk::WebView) {
+    webkit_content_blocker::attach_to_webview(app, wk);
+}
+
+#[cfg(target_os = "linux")]
+pub fn sync_webkit_adblock_enabled(app: &AppHandle, enabled: bool) {
+    webkit_content_blocker::sync_enabled(app, enabled);
+}
 
 #[cfg(test)]
 mod tests {

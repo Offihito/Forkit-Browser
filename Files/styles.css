@@ -1,29 +1,30 @@
 :root {
-  --bg: #fafafa;
+  --bg: #f6f4fc;
   --surface: #ffffff;
-  --on-surface: #1f1f1f;
-  --primary: #1a73e8;
-  --primary-container: #d2e3fc;
-  --on-primary-container: #001d66;
-  --outline: #dadce0;
-  --tab-bg: rgba(255,255,255,0.85);
-  --tab-inactive: #5f6368;
-  --error: #d93025;
+  --header-bg: #ebe6f7;
+  --on-surface: #1e1633;
+  --primary: #8b5cf6;
+  --primary-container: #ede9fe;
+  --on-primary-container: #4c1d95;
+  --outline: #dcd3f2;
+  --tab-bg: #ffffff;
+  --tab-inactive: #6b5f84;
+  --error: #e11d48;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111115;
-    --surface: #1b1b22;
-    --header-bg: #131318;
-    --on-surface: #eceef4;
-    --primary: #8ab4f8;
-    --primary-container: #1a3e72;
-    --on-primary-container: #d0e2ff;
-    --outline: rgba(255,255,255,0.09);
-    --tab-bg: #1b1b22;
-    --tab-inactive: #9499a6;
-    --error: #e81123;
+    --bg: #101014;
+    --surface: #16161b;
+    --header-bg: #0c0c0f;
+    --on-surface: #f0eff4;
+    --primary: #a78bfa;
+    --primary-container: #231f33;
+    --on-primary-container: #ede9fe;
+    --outline: #272730;
+    --tab-bg: #16161b;
+    --tab-inactive: #8e8d9a;
+    --error: #fb7185;
   }
 }
 
@@ -155,28 +156,28 @@ button:not(:disabled):hover {
 #address {
   width: 100%;
   height: 36px;
-  padding: 0 16px;
-  border-radius: 18px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 1px solid var(--outline);
-  background: rgba(0,0,0,0.04);
+  background: var(--bg);
   color: var(--on-surface);
   font-size: 13.5px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 @media (prefers-color-scheme: dark) {
   #address {
-    background: rgba(255,255,255,0.055);
+    background: #101014;
   }
   #address:focus {
-    background: rgba(255,255,255,0.08);
+    background: #131318;
   }
 }
 
 #address:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(138,180,248,0.22);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.22);
 }
 
 #new-tab {
@@ -185,7 +186,7 @@ button:not(:disabled):hover {
   width: 28px;
   height: 28px;
   align-self: center;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   font-size: 18px;
   font-weight: 400;
   flex-shrink: 0;
@@ -237,7 +238,9 @@ button:not(:disabled):hover {
   background: transparent;
   color: var(--tab-inactive);
   padding: 8px 12px;
-  border-radius: 10px 10px 0 0;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
   min-width: 130px;
   max-width: 220px;
   font-size: 13px;
@@ -248,7 +251,7 @@ button:not(:disabled):hover {
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
   user-select: none;
   touch-action: pan-x;
@@ -262,30 +265,24 @@ button:not(:disabled):hover {
 }
 
 .tab:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(124, 58, 237, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab:hover { background: rgba(255,255,255,0.06); }
+  .tab:hover { background: rgba(167, 139, 250, 0.1); }
 }
 
 .tab.active {
   background: var(--tab-bg);
   color: var(--on-surface);
-  box-shadow: 0 -1px 8px rgba(0,0,0,0.18);
+  border-color: var(--outline);
+  border-top: 2px solid var(--primary);
   opacity: 1;
   -webkit-app-region: no-drag;
 }
 
 .tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 10px;
-  right: 10px;
-  height: 2px;
-  background: var(--primary);
-  border-radius: 2px 2px 0 0;
+  display: none;
 }
 
 .tab.dragging {
@@ -299,12 +296,12 @@ button:not(:disabled):hover {
 
 .tab.drag-over {
   border-left: 3px solid var(--primary);
-  background: rgba(26,115,232,0.15);
+  background: rgba(139, 92, 246, 0.14);
 }
 
 .tab-favicon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -314,19 +311,19 @@ button:not(:disabled):hover {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .tab-close {
-  width: 2vh;
-  height: 2vh;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .tab:hover .tab-close {
@@ -384,10 +381,10 @@ webview.active {
   background: var(--surface);
   border: 1px solid var(--outline);
   border-top: none;
-  border-radius: 0 0 16px 16px;
+  border-radius: 0 0 8px 8px;
   max-height: 320px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(30, 22, 51, 0.08);
   z-index: 1000;
   display: none;
 }
@@ -398,11 +395,11 @@ webview.active {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .history-item:hover {
-  background: rgba(26,115,232,0.1);
+  background: var(--primary-container);
 }
 
 .history-item img {
@@ -461,9 +458,9 @@ webview.active {
 }
 
 #history-close {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   background: transparent;
   color: var(--on-surface);
   font-size: 20px;
@@ -471,26 +468,25 @@ webview.active {
 }
 
 #history-close:hover {
-  background: rgba(0,0,0,0.1);
+  background: var(--primary-container);
 }
 
 #clear-history-btn {
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 8px;
   background: var(--error);
   color: white;
   font-weight: 500;
   font-size: 14px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s;
   width: auto;
   height: auto;
 }
 
 #clear-history-btn:hover {
-  background: #c5221f;
-  box-shadow: 0 2px 8px rgba(217, 48, 37, 0.3);
+  background: #be123c;
 }
 
 #history-content {
@@ -682,9 +678,9 @@ webview.active {
 }
 
 .dpi-info {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  border-radius: 12px;
+  background: var(--primary-container);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
   padding: 14px;
   margin-bottom: 20px;
 }
@@ -745,8 +741,8 @@ webview.active {
 }
 
 #confirm-buttons button {
-  padding: 10px 24px;
-  border-radius: 20px;
+  padding: 8px 20px;
+  border-radius: 8px;
   font-weight: 500;
   font-size: 14px;
   width: auto;
@@ -768,20 +764,14 @@ webview.active {
 }
 
 #dpi-indicator {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
   position: relative;
-  animation: pulse 2s infinite;
+  border-radius: 8px;
 }
 
 #dpi-indicator:hover {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  transform: scale(1.05);
-}
-
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
-  50% { box-shadow: 0 0 0 8px rgba(102, 126, 234, 0); }
+  background: #7c3aed;
 }
 
 
@@ -852,7 +842,7 @@ webview.active {
   .tabs-bar::-webkit-scrollbar-thumb,
   #history-dropdown::-webkit-scrollbar-thumb,
   #history-content::-webkit-scrollbar-thumb {
-    background: #8ab4f8;
+    background: var(--primary);
   }
 }
 

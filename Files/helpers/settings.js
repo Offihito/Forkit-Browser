@@ -29,10 +29,11 @@ function loadCurrentBackground() {
     if (savedBackground) {
       preview.innerHTML = `<img src="${savedBackground}" alt="Background Preview">`;
     } else {
-      // Mevcut tema'ya göre default background göster
-      const isDark = document.body.classList.contains('dark');
-      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-      preview.innerHTML = `<img src="${defaultBg}" alt="Default Background">`;
+      preview.innerHTML = `
+        <div class="preview-placeholder">
+          <span>Solid Theme Background</span>
+        </div>
+      `;
     }
   } catch (e) {
     console.log('Error loading background preview:', e);
@@ -109,11 +110,12 @@ function resetBackground() {
     // LocalStorage'dan sil
     localStorage.removeItem('newtab_background');
     
-    // Default arka plana dön
-    const isDark = document.body.classList.contains('dark');
-    const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-    
-    document.body.style.backgroundImage = `url("${defaultBg}")`;
+    // Default arka plana dön (düz tema rengi)
+    document.body.style.backgroundImage = '';
+    document.body.style.backgroundSize = '';
+    document.body.style.backgroundPosition = '';
+    document.body.style.backgroundRepeat = '';
+    document.body.style.backgroundAttachment = '';
     
     // Önizlemeyi güncelle
     loadCurrentBackground();
@@ -170,14 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
 const originalToggleTheme = window.toggleTheme;
 window.toggleTheme = function() {
   originalToggleTheme();
-  
-  // Eğer custom background yoksa, tema'ya göre default'u göster
   try {
     const savedBackground = localStorage.getItem('newtab_background');
     if (!savedBackground) {
-      const isDark = document.body.classList.contains('dark');
-      const defaultBg = isDark ? 'helpers/dark.png' : 'helpers/light.webp';
-      document.body.style.backgroundImage = `url("${defaultBg}")`;
+      document.body.style.backgroundImage = '';
     }
   } catch (e) {
     console.log('Error updating background on theme change:', e);

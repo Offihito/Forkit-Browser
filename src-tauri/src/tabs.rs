@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
-use std::time::Duration;
 use tauri::{
     webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewBuilder},
     AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State, Webview, WebviewUrl,
@@ -19,22 +17,20 @@ pub struct TabBounds {
 
 pub struct TabManagerState {
     pub active_tab_id: Mutex<Option<u64>>,
+    pub spare_newtab_id: Mutex<Option<u64>>,
     pub overlay_open: Mutex<bool>,
     pub top_bar_height: Mutex<f64>,
     pub window_size: Mutex<(f64, f64)>,
-    pub hibernated_tabs: Mutex<HashSet<u64>>,
-    pub tab_hide_gen: Mutex<HashMap<u64, u64>>,
 }
 
 impl Default for TabManagerState {
     fn default() -> Self {
         Self {
             active_tab_id: Mutex::new(None),
+            spare_newtab_id: Mutex::new(None),
             overlay_open: Mutex::new(false),
             top_bar_height: Mutex::new(104.0),
             window_size: Mutex::new((1400.0, 800.0)),
-            hibernated_tabs: Mutex::new(HashSet::new()),
-            tab_hide_gen: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -247,6 +243,48 @@ pub fn create_tab_webview_inner(
     url: String,
     bounds: TabBounds,
 ) -> Result<(), String> {
+    create_tab_webview_with_visibility(app, tab_id, url, bounds, true)
+}
+
+pub fn create_tab_webview_hidden(
+    app: &AppHandle,
+    tab_id: u64,
+    url: String,
+    bounds: TabBounds,
+) -> Result<(), String> {
+    create_tab_webview_with_visibility(app, tab_id, url, bounds, false)
+}
+
+pub fn claim_spare_newtab(app: &AppHandle, bounds: TabBounds) -> Option<u64> {
+    let tab_state = app.try_state::<TabManagerState>()?;
+    let spare_id = tab_state.spare_newtab_id.lock().unwrap().take()?;
+    let _spare_wv = get_tab_webview(app, spare_id)?;
+
+    if bounds.y > 20.0 {
+        *tab_state.top_bar_height.lock().unwrap() = bounds.y;
+    }
+
+    let prev_active = *tab_state.active_tab_id.lock().unwrap();
+    if let Some(prev_id) = prev_active {
+        if prev_id != spare_id {
+            if let Some(prev_wv) = get_tab_webview(app, prev_id) {
+                let _ = prev_wv.hide();
+            }
+        }
+    }
+
+    *tab_state.active_tab_id.lock().unwrap() = Some(spare_id);
+    apply_layout(app, &tab_state);
+    Some(spare_id)
+}
+
+fn create_tab_webview_with_visibility(
+    app: &AppHandle,
+    tab_id: u64,
+    url: String,
+    bounds: TabBounds,
+    visible: bool,
+) -> Result<(), String> {
     let tab_state = app
         .try_state::<TabManagerState>()
         .ok_or_else(|| "TabManagerState not found".to_string())?;
@@ -258,9 +296,11 @@ pub fn create_tab_webview_inner(
         .get_window("main")
         .ok_or_else(|| "Main window not found".to_string())?;
 
-    if let Some(prev_id) = *tab_state.active_tab_id.lock().unwrap() {
-        if let Some(prev_wv) = get_tab_webview(app, prev_id) {
-            let _ = prev_wv.hide();
+    if visible {
+        if let Some(prev_id) = *tab_state.active_tab_id.lock().unwrap() {
+            if let Some(prev_wv) = get_tab_webview(app, prev_id) {
+                let _ = prev_wv.hide();
+            }
         }
     }
 
@@ -273,16 +313,29 @@ pub fn create_tab_webview_inner(
     let app_for_new_win = app.clone();
     let app_for_dl = app.clone();
 
+    #[cfg(not(target_os = "linux"))]
     let builder = WebviewBuilder::new(label, wv_url)
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+    #[cfg(target_os = "linux")]
+    let builder = WebviewBuilder::new(label, wv_url);
+
+    let builder = builder
         .initialization_script(TAB_INIT_SCRIPT)
         .on_navigation(move |nav_url| {
             let url_str = nav_url.as_str();
+            if !url_str.starts_with("http://") && !url_str.starts_with("https://") {
+                return true;
+            }
             if let Some(ad_state) = app_for_nav.try_state::<AdBlockerState>() {
                 if let Ok(mut blocker) = ad_state.inner.lock() {
                     if blocker.should_block(url_str) {
                         return false;
                     }
+                }
+            }
+            if let Some(ext_state) = app_for_nav.try_state::<crate::extensions::ExtensionManagerState>() {
+                if ext_state.inner.lock().unwrap().should_block_dnr(url_str) {
+                    return false;
                 }
             }
             true
@@ -293,6 +346,7 @@ pub fn create_tab_webview_inner(
                 PageLoadEvent::Started => {
                     #[cfg(target_os = "linux")]
                     crate::gtk_ui::on_tab_loading_started(&app_for_load, tab_id);
+                    #[cfg(not(target_os = "linux"))]
                     let _ = app_for_load.emit(
                         "tab-loading-started",
                         TabLoadPayload {
@@ -302,8 +356,13 @@ pub fn create_tab_webview_inner(
                     );
                 }
                 PageLoadEvent::Finished => {
+                    #[cfg(not(target_os = "linux"))]
+                    if let Some(script) = crate::extensions::build_page_injection_for_url(&app_for_load, &url_str) {
+                        let _ = _wv.eval(&script);
+                    }
                     #[cfg(target_os = "linux")]
                     crate::gtk_ui::on_tab_loaded(&app_for_load, tab_id, &url_str);
+                    #[cfg(not(target_os = "linux"))]
                     let _ = app_for_load.emit(
                         "tab-loaded",
                         TabLoadPayload {
@@ -317,6 +376,7 @@ pub fn create_tab_webview_inner(
         .on_document_title_changed(move |_wv, title| {
             #[cfg(target_os = "linux")]
             crate::gtk_ui::on_tab_title_changed(&app_for_title, tab_id, &title);
+            #[cfg(not(target_os = "linux"))]
             let _ = app_for_title.emit(
                 "tab-title-changed",
                 TabTitlePayload { tab_id, title },
@@ -326,6 +386,7 @@ pub fn create_tab_webview_inner(
             let url_str = new_url.to_string();
             #[cfg(target_os = "linux")]
             crate::gtk_ui::on_tab_new_window(&app_for_new_win, tab_id, &url_str);
+            #[cfg(not(target_os = "linux"))]
             let _ = app_for_new_win.emit(
                 "tab-new-window",
                 TabNewWindowPayload {
@@ -336,27 +397,64 @@ pub fn create_tab_webview_inner(
             NewWindowResponse::Deny
         })
         .on_download(move |_wv, event| {
-            if let DownloadEvent::Requested { url, destination } = event {
-                let filename = destination
-                    .file_name()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| {
-                        url.path_segments()
-                            .and_then(|s| s.last())
-                            .filter(|s| !s.is_empty())
-                            .unwrap_or("download")
-                            .to_string()
-                    });
-                #[cfg(target_os = "linux")]
-                crate::gtk_ui::on_download_requested(&app_for_dl, url.to_string(), filename.clone());
-                let _ = app_for_dl.emit(
-                    "start-download-from-webview",
-                    TabDownloadPayload {
-                        url: url.to_string(),
-                        filename,
-                    },
-                );
-                return false;
+            match event {
+                DownloadEvent::Requested { url, destination } => {
+                    let url_str = url.as_str();
+                    if url_str.starts_with("blob:") || url_str.starts_with("data:") {
+                        if let Some(name) = destination.file_name().and_then(|s| s.to_str()) {
+                            if name.len() > 180 {
+                                let safe = crate::downloads::sanitize_download_filename(name);
+                                destination.set_file_name(safe);
+                            }
+                        }
+                        return true;
+                    }
+                    let filename = destination
+                        .file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| {
+                            url.path_segments()
+                                .and_then(|s| s.last())
+                                .filter(|s| !s.is_empty())
+                                .unwrap_or("download")
+                                .to_string()
+                        });
+                    #[cfg(target_os = "linux")]
+                    crate::gtk_ui::on_download_requested(
+                        &app_for_dl,
+                        url.to_string(),
+                        filename.clone(),
+                    );
+                    #[cfg(not(target_os = "linux"))]
+                    let _ = app_for_dl.emit(
+                        "start-download-from-webview",
+                        TabDownloadPayload {
+                            url: url.to_string(),
+                            filename,
+                        },
+                    );
+                    return false;
+                }
+                DownloadEvent::Finished { url: _, path, success } => {
+                    #[cfg(target_os = "linux")]
+                    if let Some(p) = path {
+                        let name = p
+                            .file_name()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_else(|| "download".to_string());
+                        let path_str = p.to_string_lossy().to_string();
+                        if success {
+                            crate::gtk_panels::on_download_complete(&app_for_dl, &name, &path_str);
+                        } else {
+                            crate::gtk_panels::on_download_error(
+                                &app_for_dl,
+                                &name,
+                                "Download failed",
+                            );
+                        }
+                    }
+                }
+                _ => {}
             }
             true
         });
@@ -383,6 +481,8 @@ pub fn create_tab_webview_inner(
                 WebInspectorExt, WebViewExt,
             };
             let wk = platform_wv.inner();
+            crate::adblocker::attach_adblock_to_webkit(&app_for_ctx, &wk);
+            crate::extensions::install_extensions_on_webkit(&app_for_ctx, &wk);
             let app_uri = app_for_ctx.clone();
             wk.connect_uri_notify(move |wv| {
                 let uri = wv.uri().map(|s| s.to_string()).unwrap_or_default();
@@ -394,10 +494,13 @@ pub fn create_tab_webview_inner(
                     wv.can_go_forward(),
                 );
             });
-            if let Some(ctx) = WebViewExt::context(&wk) {
-                ctx.set_cache_model(CacheModel::DocumentViewer);
-                ctx.set_favicon_database_directory(None);
-            }
+            static CTX_CONFIGURED: std::sync::Once = std::sync::Once::new();
+            CTX_CONFIGURED.call_once(|| {
+                if let Some(ctx) = WebViewExt::context(&wk) {
+                    ctx.set_cache_model(CacheModel::WebBrowser);
+                    ctx.set_favicon_database_directory(None);
+                }
+            });
             let app_fav = app_for_ctx.clone();
             wk.connect_favicon_notify(move |wv| {
                 if let Some(surface) = wv.favicon() {
@@ -425,12 +528,19 @@ pub fn create_tab_webview_inner(
                 }
             });
             if let Some(settings) = WebViewExt::settings(&wk) {
-                settings.set_enable_page_cache(false);
+                settings.set_enable_page_cache(true);
                 settings.set_enable_offline_web_application_cache(false);
                 settings.set_enable_html5_database(false);
                 settings.set_enable_hyperlink_auditing(false);
                 settings.set_enable_dns_prefetching(true);
                 settings.set_enable_developer_extras(false);
+                settings.set_enable_webgl(true);
+                settings.set_enable_mediasource(true);
+                settings.set_enable_webaudio(true);
+                settings.set_enable_smooth_scrolling(true);
+                settings.set_hardware_acceleration_policy(
+                    webkit2gtk::HardwareAccelerationPolicy::Always,
+                );
             }
 
             thread_local! {
@@ -721,11 +831,9 @@ pub fn create_tab_webview_inner(
         });
     }
 
-    let prev_active = *tab_state.active_tab_id.lock().unwrap();
-    if let Some(prev_id) = prev_active {
-        if prev_id != tab_id {
-            schedule_tab_hibernation(&app, &tab_state, prev_id);
-        }
+    if !visible {
+        let _ = child.hide();
+        return Ok(());
     }
 
     *tab_state.active_tab_id.lock().unwrap() = Some(tab_id);
@@ -733,54 +841,6 @@ pub fn create_tab_webview_inner(
 
     Ok(())
 }
-
-fn cancel_tab_hibernation(tab_state: &TabManagerState, tab_id: u64) {
-    let mut gens = tab_state.tab_hide_gen.lock().unwrap();
-    let next = gens.get(&tab_id).copied().unwrap_or(0).wrapping_add(1);
-    gens.insert(tab_id, next);
-}
-
-#[cfg(target_os = "linux")]
-fn schedule_tab_hibernation(app: &AppHandle, tab_state: &TabManagerState, tab_id: u64) {
-    let gen = {
-        let mut gens = tab_state.tab_hide_gen.lock().unwrap();
-        let next = gens.get(&tab_id).copied().unwrap_or(0).wrapping_add(1);
-        gens.insert(tab_id, next);
-        next
-    };
-
-    let app_clone = app.clone();
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(20)).await;
-        let app_main = app_clone.clone();
-        let _ = app_clone.run_on_main_thread(move || {
-            let Some(state) = app_main.try_state::<TabManagerState>() else {
-                return;
-            };
-            if *state.active_tab_id.lock().unwrap() == Some(tab_id) {
-                return;
-            }
-            if state.tab_hide_gen.lock().unwrap().get(&tab_id).copied() != Some(gen) {
-                return;
-            }
-            if let Some(wv) = get_tab_webview(&app_main, tab_id) {
-                let _ = wv.with_webview(move |platform_wv| {
-                    use webkit2gtk::WebViewExt;
-                    let wk = platform_wv.inner();
-                    if !wk.is_playing_audio() {
-                        wk.terminate_web_process();
-                        if let Some(st) = app_main.try_state::<TabManagerState>() {
-                            st.hibernated_tabs.lock().unwrap().insert(tab_id);
-                        }
-                    }
-                });
-            }
-        });
-    });
-}
-
-#[cfg(not(target_os = "linux"))]
-fn schedule_tab_hibernation(_app: &AppHandle, _tab_state: &TabManagerState, _tab_id: u64) {}
 
 #[tauri::command]
 pub fn switch_tab_webview(
@@ -804,29 +864,18 @@ pub fn switch_tab_webview_inner(
         *tab_state.top_bar_height.lock().unwrap() = bounds.y;
     }
 
-    cancel_tab_hibernation(&tab_state, tab_id);
-
     if let Some(prev_id) = *tab_state.active_tab_id.lock().unwrap() {
         if prev_id != tab_id {
             if let Some(prev_wv) = get_tab_webview(app, prev_id) {
                 let _ = prev_wv.hide();
             }
-            schedule_tab_hibernation(app, &tab_state, prev_id);
         }
     }
 
     *tab_state.active_tab_id.lock().unwrap() = Some(tab_id);
     apply_layout(app, &tab_state);
 
-    let was_hibernated = tab_state.hibernated_tabs.lock().unwrap().remove(&tab_id);
     if let Some(wv) = get_tab_webview(app, tab_id) {
-        if was_hibernated {
-            #[cfg(target_os = "linux")]
-            let _ = wv.with_webview(|platform_wv| {
-                use webkit2gtk::WebViewExt;
-                platform_wv.inner().reload();
-            });
-        }
         if !*tab_state.overlay_open.lock().unwrap() {
             let _ = wv.set_focus();
         }
@@ -892,9 +941,6 @@ pub fn close_tab_webview_inner(app: &AppHandle, tab_id: u64) -> Result<(), Strin
     let tab_state = app
         .try_state::<TabManagerState>()
         .ok_or_else(|| "TabManagerState not found".to_string())?;
-    cancel_tab_hibernation(&tab_state, tab_id);
-    tab_state.hibernated_tabs.lock().unwrap().remove(&tab_id);
-    tab_state.tab_hide_gen.lock().unwrap().remove(&tab_id);
 
     if let Some(wv) = get_tab_webview(app, tab_id) {
         #[cfg(target_os = "linux")]

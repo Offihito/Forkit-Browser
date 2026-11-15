@@ -1180,6 +1180,7 @@ name = "forkit"
 version = "1.3.0"
 dependencies = [
  "arboard",
+ "flate2",
  "futures-util",
  "gtk",
  "reqwest 0.12.28",

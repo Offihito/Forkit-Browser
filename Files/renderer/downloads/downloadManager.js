@@ -144,6 +144,13 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
     }
   }
   
+  // Store channel count if provided
+  if (data.channels) {
+    item.dataset.channels = data.channels;
+  }
+  const channels = Number(item.dataset.channels || 0);
+  const modeSuffix = channels > 1 ? ` • Multi (${channels}x)` : (channels === 1 ? ' • Single' : '');
+
   // Store start time for calculations
   if (!item.dataset.startTime) {
     item.dataset.startTime = Date.now();
@@ -151,15 +158,15 @@ function updateDownloadItem(fileName, progress, status, data = {}) {
   
   if (status === 'complete') {
     item.classList.add('download-complete');
-    statusEl.textContent = 'Complete';
+    statusEl.textContent = `Complete${modeSuffix}`;
     timeEl.textContent = 'Completed';
     item.querySelector('.download-item-header i').className = 'fas fa-check-circle';
   } else if (status === 'error') {
     item.classList.add('download-error');
-    statusEl.textContent = 'Failed';
+    statusEl.textContent = `Failed${modeSuffix}`;
     timeEl.textContent = 'Failed';
     item.querySelector('.download-item-header i').className = 'fas fa-exclamation-circle';
   } else {
-    statusEl.textContent = 'Downloading...';
+    statusEl.textContent = `Downloading...${modeSuffix}`;
   }
 }

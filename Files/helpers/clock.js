@@ -31,14 +31,38 @@ function toggleTheme() {
   }
 }
 
-// Tema yükle
-try {
-  const savedTheme = localStorage.getItem('newtab_theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
+// Tema yükle (varsayılan olarak sistem temasını takip et)
+function applySystemOrSavedTheme() {
+  try {
+    const savedTheme = localStorage.getItem('newtab_theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark');
+    } else if (savedTheme === 'light') {
+      document.body.classList.remove('dark');
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  } catch (e) {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark');
+    }
   }
-} catch (e) {
-  console.log('LocalStorage not available');
+}
+
+applySystemOrSavedTheme();
+
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    try {
+      if (!localStorage.getItem('newtab_theme')) {
+        applySystemOrSavedTheme();
+      }
+    } catch (e) {
+      applySystemOrSavedTheme();
+    }
+  });
 }
 
 // Domain'den favicon URL'i al

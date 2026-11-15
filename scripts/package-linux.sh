@@ -48,10 +48,10 @@ if command -v dpkg-deb >/dev/null 2>&1; then
   mkdir -p "$DEB_STAGE/DEBIAN" \
            "$DEB_STAGE/usr/bin" \
            "$DEB_STAGE/usr/share/applications" \
-           "$DEB_STAGE/usr/share/icons/hicolor/256x256/apps"
+           "$DEB_STAGE/usr/share/icons/hicolor/512x512/apps"
   cp "$BIN_PATH" "$DEB_STAGE/usr/bin/forkit"
   chmod 755 "$DEB_STAGE/usr/bin/forkit"
-  cp "$ICON_PATH" "$DEB_STAGE/usr/share/icons/hicolor/256x256/apps/forkit.png"
+  cp "$ICON_PATH" "$DEB_STAGE/usr/share/icons/hicolor/512x512/apps/forkit.png"
   printf "%s" "$DESKTOP_CONTENT" > "$DEB_STAGE/usr/share/applications/forkit.desktop"
 
   INSTALLED_SIZE=$(du -sk "$DEB_STAGE/usr" | cut -f1)
@@ -70,6 +70,17 @@ EOF
 
   chmod 755 "$DEB_STAGE/DEBIAN"
   chmod 644 "$DEB_STAGE/DEBIAN/control"
+  cat > "$DEB_STAGE/DEBIAN/postinst" <<'EOF'
+#!/bin/sh
+set -e
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+fi
+EOF
+  chmod 755 "$DEB_STAGE/DEBIAN/postinst"
   dpkg-deb --build --root-owner-group "$DEB_STAGE" "$OUT_DIR/forkit_${VERSION}_${ARCH_DEB}.deb"
   echo "Created: $OUT_DIR/forkit_${VERSION}_${ARCH_DEB}.deb"
 else
